@@ -11,7 +11,7 @@ function Repl:new(opts)
   obj.opts = opts
   obj.win_id = nil
   return obj
-}
+end
 
 function Repl:start(opts)
   if self.proc == nil then

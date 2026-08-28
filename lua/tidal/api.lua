@@ -12,6 +12,10 @@ function M.ensure_launched()
   if state.launched then
     return
   end
+  if state.launching then
+    return
+  end
+  state.launching = true
   local opts = config.options.boot
   local current_win = vim.api.nvim_get_current_win()
   if opts.tidal.enabled then
@@ -19,10 +23,16 @@ function M.ensure_launched()
   end
   if opts.sclang.enabled then
     local sclang_split = opts.tidal.enabled and opts.split == "h" and "v" or opts.split
-    boot.sclang(opts.sclang, sclang_split)
+    boot.sclang(opts.sclang, sclang_split, function()
+      vim.api.nvim_set_current_win(current_win)
+      state.launched = true
+      state.launching = false
+    end)
+  else
+    vim.api.nvim_set_current_win(current_win)
+    state.launched = true
+    state.launching = false
   end
-  vim.api.nvim_set_current_win(current_win)
-  state.launched = true
 end
 
 function M.launch_tidal(args)
@@ -31,15 +41,25 @@ function M.launch_tidal(args)
     notify.warn("Tidal is already running")
     return
   end
+  if state.launching then
+    return
+  end
+  state.launching = true
   if args.tidal.enabled then
     boot.tidal(args.tidal, args.split)
   end
   if args.sclang.enabled then
     local sclang_split = args.tidal.enabled and args.split == "h" and "v" or args.split
-    boot.sclang(args.sclang, sclang_split)
+    boot.sclang(args.sclang, sclang_split, function()
+      vim.api.nvim_set_current_win(current_win)
+      state.launched = true
+      state.launching = false
+    end)
+  else
+    vim.api.nvim_set_current_win(current_win)
+    state.launched = true
+    state.launching = false
   end
-  vim.api.nvim_set_current_win(current_win)
-  state.launched = true
 end
 
 function M.exit_tidal()
@@ -53,6 +73,7 @@ function M.exit_tidal()
     end
   end
   state.launched = false
+  state.launching = false
   state.ghci = nil
   state.ghci_win = nil
   state.ghci_buf = nil

@@ -14,6 +14,7 @@ local defaults = {
       file = vim.api.nvim_get_runtime_file("bootfiles/BootSuperDirt.scd", false)[1],
       enabled = true,
       kill_jack = true,
+      soundcard = nil,
       pre_cmd = nil,
     },
     split = "h",

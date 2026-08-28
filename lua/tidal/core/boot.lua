@@ -31,6 +31,12 @@ function M.sclang(opts, split)
   if not opts.enabled then
     return
   end
+  if opts.kill_jack then
+    vim.fn.system("jack_control stop 2>/dev/null; true")
+  end
+  if opts.pre_cmd then
+    vim.fn.system(opts.pre_cmd)
+  end
   state.sclang = Sclang:new({
     name = "sclang",
     cmd = opts.cmd,
@@ -44,6 +50,8 @@ function M.sclang(opts, split)
   state.sclang:start(win_opts)
   state.sclang_buf = state.sclang.buf.bufnr
   state.sclang_win = state.sclang.win_id
+  state.sclang:send_line('s.options.numWireBufs = 128;')
+  state.sclang:send_line('s.options.numAudioBusChannels = 2048;')
   local file = vim.fn.expand(opts.file)
   state.sclang:send_line('"' .. file .. '".load;')
 end

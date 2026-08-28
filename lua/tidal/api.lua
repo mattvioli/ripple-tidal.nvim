@@ -8,7 +8,7 @@ local config = require("tidal.config")
 
 local M = {}
 
-local function ensure_launched()
+function M.ensure_launched()
   if state.launched then
     return
   end
@@ -93,7 +93,7 @@ end
 
 function M.send_line()
   if config.options.auto_launch then
-    ensure_launched()
+    M.ensure_launched()
   end
   local line = select.get_current_line()
   local text = line.lines[1]
@@ -108,7 +108,7 @@ end
 
 function M.send_visual()
   if config.options.auto_launch then
-    ensure_launched()
+    M.ensure_launched()
   end
   local visual = select.get_visual()
   if visual then
@@ -122,7 +122,7 @@ end
 
 function M.send_block()
   if config.options.auto_launch then
-    ensure_launched()
+    M.ensure_launched()
   end
   if util.is_empty(vim.api.nvim_get_current_line()) then
     return
@@ -137,7 +137,7 @@ end
 
 function M.send_node()
   if config.options.auto_launch then
-    ensure_launched()
+    M.ensure_launched()
   end
   local block = select.get_node()
   if block then

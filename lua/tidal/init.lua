@@ -46,6 +46,9 @@ local function setup_autocmds()
     pattern = { "*.tidal" },
     callback = function()
       vim.api.nvim_set_option_value("filetype", "haskell", { buf = 0 })
+      if config.options.auto_launch then
+        api.ensure_launched()
+      end
       for name, mapping in pairs(config.options.mappings or {}) do
         if mapping then
           local command = keymaps[name]
@@ -65,6 +68,13 @@ local function setup_autocmds()
           vim.keymap.set(mapping.mode, mapping.key, command.callback, { buffer = true, desc = command.desc })
         end
       end
+    end,
+  })
+
+  vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
+    group = "TidalRipple",
+    callback = function()
+      api.exit_tidal()
     end,
   })
 end

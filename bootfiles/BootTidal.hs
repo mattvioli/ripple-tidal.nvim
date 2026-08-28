@@ -1,10 +1,5 @@
-: {
 import Sound.Tidal.Context
-}
-
 tidal <- startTidal superdirtTarget defaultConfig
-
-{
 let
   d1 = streamReplace tidal 1
   d2 = streamReplace tidal 2
@@ -25,33 +20,20 @@ let
 
   hush = streamHush tidal
 
-  getcps = streamGetCps tidal
-  setcps = streamSetCps tidal
+  getcps = streamGetCPS tidal
+  setcps = streamSetCPS tidal
   getbpm = streamGetBPM tidal
   setbpm = streamSetBPM tidal
 
-  -- transitions
-  anticipate = streamAnticipate tidal
-  die = streamDie tidal
-  interpolate = streamInterpolate tidal
-  jump = streamJump tidal
-  jumpIn = streamJumpIn tidal
-  jumpIn' = streamJumpIn' tidal
-  jumpMod = streamJumpMod tidal
-  jumpMod' = streamJumpMod' tidal
   mute = streamMute tidal
   unmute = streamUnmute tidal
   solo = streamSolo tidal
   unsolo = streamUnsolo tidal
-  once = once tidal
+  once = streamOnce tidal
   first = streamFirst tidal
   asap = streamReplace tidal
-  qtrigger = streamQtell tidal
-  trigger = streamTell tidal
-  cps = streamGetCps tidal
-  bpm = streamGetBPM tidal
-  wait = streamWait tidal
-  waitT = streamWaitT tidal
-in return()
-}
-: }
+  all = streamAll tidal
+  get = streamGet tidal
+  set = streamSet tidal
+  list = streamList tidal
+  silenceOrbit = streamSilence tidal

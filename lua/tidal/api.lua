@@ -8,6 +8,18 @@ local config = require("tidal.config")
 
 local M = {}
 
+local function parse_orbit(text)
+  return tonumber(text:match("^d(%d+)"))
+end
+
+local function enqueue_playhead(start_pos, finish_pos, text)
+  if config.options.playhead.enabled then
+    local bufnr = vim.api.nvim_get_current_buf()
+    local orbit = text and parse_orbit(text)
+    require("tidal.core.playhead").enqueue(bufnr, finish_pos[1], finish_pos[1], orbit)
+  end
+end
+
 function M.ensure_launched()
   if state.launched then
     return
@@ -27,11 +39,17 @@ function M.ensure_launched()
       vim.api.nvim_set_current_win(current_win)
       state.launched = true
       state.launching = false
+      if config.options.osc.enabled then
+        require("tidal.core.osc").start()
+      end
     end)
   else
     vim.api.nvim_set_current_win(current_win)
     state.launched = true
     state.launching = false
+    if config.options.osc.enabled then
+      require("tidal.core.osc").start()
+    end
   end
 end
 
@@ -54,11 +72,17 @@ function M.launch_tidal(args)
       vim.api.nvim_set_current_win(current_win)
       state.launched = true
       state.launching = false
+      if config.options.osc.enabled then
+        require("tidal.core.osc").start()
+      end
     end)
   else
     vim.api.nvim_set_current_win(current_win)
     state.launched = true
     state.launching = false
+    if config.options.osc.enabled then
+      require("tidal.core.osc").start()
+    end
   end
 end
 
@@ -80,6 +104,9 @@ function M.exit_tidal()
   state.sclang = nil
   state.sclang_win = nil
   state.sclang_buf = nil
+
+  require("tidal.core.osc").stop()
+  require("tidal.core.playhead").clear()
 end
 
 local function ft_to_repl()
@@ -98,10 +125,13 @@ function M.send(text)
 end
 
 function M.send_silence()
-  message.tidal.send_line(string.format("d%d silence", vim.v.count1))
+  local orbit = vim.v.count1
+  require("tidal.core.playhead").clear(orbit)
+  message.tidal.send_line(string.format("d%d silence", orbit))
 end
 
 function M.send_hush()
+  require("tidal.core.playhead").clear()
   message.tidal.send_line("hush")
 end
 
@@ -120,6 +150,7 @@ function M.send_line()
   local text = line.lines[1]
   if #text > 0 then
     require("tidal.core.highlight").apply_highlight(line.start, line.finish)
+    enqueue_playhead(line.start, line.finish, text)
     local repl = ft_to_repl()
     if repl then
       repl.send_line(text)
@@ -134,6 +165,7 @@ function M.send_visual()
   local visual = select.get_visual()
   if visual then
     require("tidal.core.highlight").apply_highlight(visual.start, visual.finish)
+    enqueue_playhead(visual.start, visual.finish, visual.lines[#visual.lines])
     local repl = ft_to_repl()
     if repl then
       repl.send_multiline(visual.lines)
@@ -150,6 +182,7 @@ function M.send_block()
   end
   local block = select.get_block()
   require("tidal.core.highlight").apply_highlight(block.start, block.finish)
+  enqueue_playhead(block.start, block.finish, block.lines[#block.lines])
   local repl = ft_to_repl()
   if repl then
     repl.send_multiline(block.lines)
@@ -163,6 +196,7 @@ function M.send_node()
   local block = select.get_node()
   if block then
     require("tidal.core.highlight").apply_highlight(block.start, block.finish)
+    enqueue_playhead(block.start, block.finish, block.lines[#block.lines])
     local repl = ft_to_repl()
     if repl then
       repl.send_multiline(block.lines)
@@ -185,6 +219,24 @@ end
 function M.show_tree()
   if state.sclang and state.sclang:is_running() then
     state.sclang:send_line("s.plotTree")
+  end
+end
+
+function M.start_osc()
+  require("tidal.core.osc").start()
+end
+
+function M.stop_osc()
+  require("tidal.core.osc").stop()
+  require("tidal.core.playhead").clear()
+end
+
+function M.toggle_osc()
+  local osc = require("tidal.core.osc")
+  if osc.is_running() then
+    M.stop_osc()
+  else
+    M.start_osc()
   end
 end
 

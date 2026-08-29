@@ -1,5 +1,8 @@
 import Sound.Tidal.Context
-tidal <- startTidal superdirtTarget defaultConfig
+
+let visualizerTarget = superdirtTarget {oName = "visualizer", oPort = 5050, oBusPort = Nothing}
+tidal <- startStream defaultConfig [(superdirtTarget, [superdirtShape]), (visualizerTarget, [superdirtShape])]
+
 let
   d1 = streamReplace tidal 1
   d2 = streamReplace tidal 2

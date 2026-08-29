@@ -8,6 +8,11 @@ local state = {
   sclang = nil,
   sclang_win = nil,
   sclang_buf = nil,
+  osc = nil,
+  osc_running = false,
+  current_cps = nil,
+  current_cycle = nil,
+  playhead = nil,
 }
 
 return state

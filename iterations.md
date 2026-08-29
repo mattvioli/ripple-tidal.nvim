@@ -29,13 +29,13 @@
 
 **Goal**: Real-time beat tracking via Tidal's OSC output, driving line highlighting.
 
-- [ ] `core/osc.lua` — UDP socket listener on port 5050
-- [ ] Parse incoming `/dirt/play` OSC messages (extract `cycle`, `cps`, `orbit`, `delta`)
-- [ ] Calculate current beat within cycle from `cycle` + `cps`
-- [ ] Replace flash-on-send with extmark highlighting driven by OSC timing
-- [ ] Modify bundled `BootTidal.hs` to add second OSC target pointing to `127.0.0.1:5050`
-- [ ] Auto-configure boot file to include visualizer target
-- [ ] Statusline component showing current CPS / BPM / cycle
+- [x] `core/osc.lua` — UDP socket listener on port 5050
+- [x] Parse incoming `/dirt/play` OSC messages (extract `cycle`, `cps`, `orbit`, `delta`)
+- [x] Calculate current beat within cycle from `cycle` + `cps`
+- [x] Replace flash-on-send with extmark highlighting driven by OSC timing
+- [x] Modify bundled `BootTidal.hs` to add second OSC target pointing to `127.0.0.1:5050`
+- [x] Auto-configure boot file to include visualizer target
+- [x] Statusline component showing current CPS / BPM / cycle
 
 ## Iteration 3 — Floating Window Visualizer
 

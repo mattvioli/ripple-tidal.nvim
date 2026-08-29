@@ -74,7 +74,10 @@ function M.sclang(opts, split, callback)
     if opts.kill_jack then
       vim.fn.system("jack_control stop 2>/dev/null; true")
     end
-    soundcard.launch_jackd(card)
+    local ok = soundcard.launch_jackd(card)
+    if not ok then
+      notify.warn("Continuing without JACK; SuperCollider may not have audio")
+    end
     if opts.pre_cmd then
       vim.fn.system(opts.pre_cmd)
     end
@@ -116,7 +119,10 @@ function M.sclang(opts, split, callback)
     if opts.kill_jack then
       vim.fn.system("jack_control stop 2>/dev/null; true")
     end
-    soundcard.launch_jackd(selected)
+    local ok = soundcard.launch_jackd(selected)
+    if not ok then
+      notify.warn("Continuing without JACK; SuperCollider may not have audio")
+    end
     if opts.pre_cmd then
       vim.fn.system(opts.pre_cmd)
     end

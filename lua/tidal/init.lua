@@ -19,6 +19,7 @@ local keymaps = {
   show_meter = { callback = api.show_meter, desc = "Show SuperCollider meter window" },
   show_scope = { callback = api.show_scope, desc = "Show SuperCollider scope window" },
   show_tree = { callback = api.show_tree, desc = "Show SuperCollider node tree" },
+  toggle_osc = { callback = api.toggle_osc, desc = "Toggle OSC listener" },
 }
 
 local function setup_user_commands()
@@ -36,6 +37,8 @@ local function setup_user_commands()
     local n = tonumber(opts.args) or vim.v.count1
     message.tidal.send_line(string.format("d%d silence", n))
   end, { nargs = "?", desc = "Silence a Tidal pattern (default: d1)" })
+
+  vim.api.nvim_create_user_command("TidalOSCToggle", api.toggle_osc, { desc = "Toggle OSC listener" })
 end
 
 local function setup_autocmds()
@@ -79,7 +82,7 @@ local function setup_autocmds()
   })
 end
 
-local MIN_VERSION = "0.8.0"
+local MIN_VERSION = "0.10.0"
 
 function Tidal.setup(options)
   if vim.fn.has("nvim-" .. MIN_VERSION) == 0 then

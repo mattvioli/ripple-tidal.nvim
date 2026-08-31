@@ -13,6 +13,7 @@ local state = {
   current_cps = nil,
   current_cycle = nil,
   playhead = nil,
+  visualizer_open = false,
 }
 
 return state

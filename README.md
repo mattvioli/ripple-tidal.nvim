@@ -13,8 +13,9 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 - SuperCollider visual tools: `show_meter`, `show_scope`, `show_tree`
 - Haskell syntax highlighting for `.tidal` files
 - Flash-on-send highlight
-- OSC-based cycle visualization _(planned)_
-- Floating window visualizer _(planned)_
+- OSC-based cycle visualization (toggle with `:TidalOSCToggle`)
+- Floating window beat grid visualizer (toggle with `:TidalVisualizerToggle` or `<leader>v`)
+- All visualization features are opt-in — enable them via the toggle commands or keymaps
 
 ## Installation
 
@@ -62,6 +63,7 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     show_meter  = { mode = { "n", "i", "x" }, key = "<F1>" },
     show_scope  = { mode = { "n", "i", "x" }, key = "<F2>" },
     show_tree   = { mode = { "n", "i", "x" }, key = "<F3>" },
+    toggle_visualizer = { mode = "n", key = "<leader>v" },
   },
   selection_highlight = {
     highlight = { link = "IncSearch" },
@@ -79,7 +81,9 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 | `:TidalQuit` | Stop all processes |
 | `:TidalToggle` | Show/hide the GHCi terminal window |
 | `:TidalHush` | Silence all patterns |
-| `:TidalSilence {n}` | Silence pattern d{n} (default: d1) |
+| `:TidalSilence {n}` | Silence pattern d{n} (default: d0) |
+| `:TidalOSCToggle` | Toggle OSC cycle listener |
+| `:TidalVisualizerToggle` | Toggle beat grid visualizer floating window |
 
 ## Boot file
 

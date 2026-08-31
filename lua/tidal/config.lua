@@ -36,6 +36,7 @@ local defaults = {
     show_scope = { mode = { "n", "i", "x" }, key = "<F2>" },
     show_tree = { mode = { "n", "i", "x" }, key = "<F3>" },
     toggle_osc = { mode = "n", key = "<leader>o" },
+    toggle_visualizer = { mode = "n", key = "<leader>v" },
   },
   selection_highlight = {
     highlight = { link = "IncSearch" },
@@ -51,7 +52,24 @@ local defaults = {
   },
   statusline = {
     enabled = true,
-    format = "♩ {bpm} BPM | c.{cycle}",
+    format = "♩ {cps} CPS | c.{cycle}",
+  },
+  visualizer = {
+    width = 60,
+    height = 12,
+    border = "single",
+    refresh_interval_ms = 33,
+    grid = {
+      divisions = 4,
+      total_cycles = 1,
+      chars_per_beat = 8,
+    },
+    palette = {
+      "#FF6B6B", "#51CF66", "#FFD43B", "#339AF0",
+      "#CC5DE8", "#20C997", "#F06595", "#FF922B",
+    },
+    max_orbits = 8,
+    max_events_per_orbit = 4,
   },
   auto_launch = true,
 }

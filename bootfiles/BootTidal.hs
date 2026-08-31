@@ -4,6 +4,7 @@ let visualizerTarget = superdirtTarget {oName = "visualizer", oPort = 5050, oBus
 tidal <- startStream defaultConfig [(superdirtTarget, [superdirtShape]), (visualizerTarget, [superdirtShape])]
 
 let
+  d0 = streamReplace tidal 0
   d1 = streamReplace tidal 1
   d2 = streamReplace tidal 2
   d3 = streamReplace tidal 3
@@ -19,7 +20,6 @@ let
   d13 = streamReplace tidal 13
   d14 = streamReplace tidal 14
   d15 = streamReplace tidal 15
-  d16 = streamReplace tidal 16
 
   hush = streamHush tidal
 

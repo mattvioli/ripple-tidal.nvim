@@ -1,137 +1,84 @@
 local config = require("tidal.config")
 local state = require("tidal.core.state")
 local notify = require("tidal.util.notify")
+local Packet = require("tidal.lib.losc.packet")
 
 local M = {}
 
-function M.decode(data)
-  local pos = 1
-
-  local function read_string()
-    local start = pos
-    while pos <= #data and data:byte(pos) ~= 0 do
-      pos = pos + 1
-    end
-    local str = data:sub(start, pos - 1)
-    pos = pos + 1
-    pos = pos + ((4 - (pos - start - 1) % 4 - 1) % 4)
-    return str
-  end
-
-  local address = read_string()
-  local type_tags = read_string()
-
-  if type_tags:byte(1) ~= 44 then
-    return nil
-  end
-
-  local args = {}
-  for i = 2, #type_tags do
-    local tag = type_tags:sub(i, i)
-    if tag == "f" then
-      local val = string.unpack(">f", data:sub(pos, pos + 3))
-      table.insert(args, val)
-      pos = pos + 4
-    elseif tag == "i" then
-      local val = string.unpack(">i4", data:sub(pos, pos + 3))
-      table.insert(args, val)
-      pos = pos + 4
-    elseif tag == "s" then
-      local str = read_string()
-      table.insert(args, str)
-    elseif tag == "d" then
-      local val = string.unpack(">d", data:sub(pos, pos + 7))
-      table.insert(args, val)
-      pos = pos + 8
-    elseif tag == "T" then
-      table.insert(args, true)
-    elseif tag == "F" then
-      table.insert(args, false)
-    elseif tag == "N" then
-      table.insert(args, nil)
-    elseif tag == "I" then
-      table.insert(args, math.huge)
-    end
-  end
-
-  return { address = address, args = args }
-end
-
 local function parse_dirt_play(msg)
-  local args = msg.args
-  if #args < 5 then
+
+  if #msg < 4 then
     return nil
   end
 
-  local sound = args[1]
-  local cycle = args[2]
-  local cps = args[3]
-  local orbit = args[4] + 1
-  local delta = args[5]
-
-  return {
-    sound = sound,
-    cycle = cycle,
-    cps = cps,
-    orbit = orbit,
-    delta = delta,
+  local result = {
+    orbit = tonumber(msg[2]),
   }
-end
 
-local function on_message(data)
-  local msg = M.decode(data)
-  if not msg then
-    return
+  for i = 3, #msg - 1, 2 do
+    local key = msg[i]
+    local val = msg[i + 1]
+    if type(key) == "string" then
+      if key == "cps" then
+        result.cps = tonumber(val)
+      elseif key == "cycle" then
+        result.cycle = tonumber(val)
+      elseif key == "delta" then
+        result.delta = tonumber(val)
+      elseif key == "s" then
+        result.sound = val
+      elseif key == "n" then
+        result.n = tonumber(val)
+      end
+    end
   end
 
+  return result
+end
+
+local function dispatch(msg)
   if msg.address ~= "/dirt/play" then
     return
   end
-
   local parsed = parse_dirt_play(msg)
   if not parsed then
     return
   end
+
+  vim.schedule(function()
+    vim.notify(string.format("OSC /dirt/play: sound=%s n=%s cycle=%s cps=%s orbit=%s delta=%s",
+      vim.inspect(parsed.sound), vim.inspect(parsed.n), vim.inspect(parsed.cycle),
+      vim.inspect(parsed.cps), vim.inspect(parsed.orbit), vim.inspect(parsed.delta)), vim.log.levels.DEBUG)
+  end)
 
   state.current_cps = parsed.cps
   state.current_cycle = parsed.cycle
 
   local playhead = require("tidal.core.playhead")
   playhead.on_cycle(parsed)
+
+  local viz_ok, viz = pcall(require, "tidal.core.visualizer")
+  if viz_ok and viz.is_open() then
+    viz.add_event(parsed)
+  end
 end
 
 local function on_read(err, data)
-  if err then
-    return
-  end
-  if not data then
+  if err or not data or #data == 0 then
     return
   end
 
-  local pos = 1
-  while pos <= #data do
-    local bundle_header = data:sub(pos, pos + 7)
-    if bundle_header == "#bundle" then
-      pos = pos + 8
-      pos = pos + 8
-      while pos <= #data do
-        if pos + 3 > #data then
-          break
-        end
-        local _, elem_len = string.unpack(">I4", data:sub(pos, pos + 3))
-        pos = pos + 4
-        if pos + elem_len > #data + 1 then
-          break
-        end
-        local elem = data:sub(pos, pos + elem_len - 1)
-        on_message(elem)
-        pos = pos + elem_len
-      end
-    else
-      local remaining = data:sub(pos)
-      on_message(remaining)
-      break
+  local ok, result = pcall(Packet.unpack, data)
+  if not ok or not result then
+    return
+  end
+
+  if result.timetag then
+    for _, elem in ipairs(result) do
+      dispatch(elem)
     end
+  else
+    dispatch(result)
   end
 end
 
@@ -147,8 +94,21 @@ function M.start()
     return
   end
 
-  udp:bind("127.0.0.1", port)
-  udp:recv_start(on_read)
+  local ok
+
+  ok = udp:bind("127.0.0.1", port)
+  if not ok then
+    notify.error("OSC: failed to bind to port " .. port)
+    udp:close()
+    return
+  end
+
+  ok = udp:recv_start(on_read)
+  if not ok then
+    notify.error("OSC: failed to start receiving on port " .. port)
+    udp:close()
+    return
+  end
 
   state.osc = udp
   state.osc_running = true

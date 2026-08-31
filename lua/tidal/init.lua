@@ -20,6 +20,7 @@ local keymaps = {
   show_scope = { callback = api.show_scope, desc = "Show SuperCollider scope window" },
   show_tree = { callback = api.show_tree, desc = "Show SuperCollider node tree" },
   toggle_osc = { callback = api.toggle_osc, desc = "Toggle OSC listener" },
+  toggle_visualizer = { callback = api.toggle_visualizer, desc = "Toggle visualizer floating window" },
 }
 
 local function setup_user_commands()
@@ -34,11 +35,12 @@ local function setup_user_commands()
   vim.api.nvim_create_user_command("TidalHush", api.send_hush, { desc = "Hush all Tidal patterns" })
 
   vim.api.nvim_create_user_command("TidalSilence", function(opts)
-    local n = tonumber(opts.args) or vim.v.count1
+    local n = tonumber(opts.args) or vim.v.count
     message.tidal.send_line(string.format("d%d silence", n))
-  end, { nargs = "?", desc = "Silence a Tidal pattern (default: d1)" })
+  end, { nargs = "?", desc = "Silence a Tidal pattern (default: d0)" })
 
   vim.api.nvim_create_user_command("TidalOSCToggle", api.toggle_osc, { desc = "Toggle OSC listener" })
+  vim.api.nvim_create_user_command("TidalVisualizerToggle", api.toggle_visualizer, { desc = "Toggle visualizer floating window" })
 end
 
 local function setup_autocmds()

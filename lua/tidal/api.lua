@@ -125,7 +125,7 @@ function M.send(text)
 end
 
 function M.send_silence()
-  local orbit = vim.v.count1
+  local orbit = vim.v.count
   require("tidal.core.playhead").clear(orbit)
   message.tidal.send_line(string.format("d%d silence", orbit))
 end
@@ -229,6 +229,10 @@ end
 function M.stop_osc()
   require("tidal.core.osc").stop()
   require("tidal.core.playhead").clear()
+end
+
+function M.toggle_visualizer()
+  require("tidal.core.visualizer").toggle()
 end
 
 function M.toggle_osc()

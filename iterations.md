@@ -41,8 +41,8 @@
 
 **Goal**: Dedicated visualizer window with live beat grid, per-orbit tracking.
 
-- [ ] `core/visualizer.lua` — floating window with configurable size/position
-- [ ] Beat grid display: colored markers per orbit moving across the grid
-- [ ] Real-time updates via `vim.uv` timer + OSC data
-- [ ] Configurable colors, shapes, grid divisions
-- [ ] Optional: send visualizer data to external window (like DPV) via OSC
+- [x] `core/visualizer.lua` — floating window with configurable size/position
+- [x] Beat grid display: colored markers per orbit moving across the grid
+- [x] Real-time updates via `vim.uv` timer + OSC data
+- [x] Configurable colors, shapes, grid divisions
+- [x] Optional: send visualizer data to external window (like DPV) via OSC

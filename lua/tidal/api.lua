@@ -244,4 +244,12 @@ function M.toggle_osc()
   end
 end
 
+function M.toggle_taptempo()
+  require("tidal.core.taptempo").toggle()
+end
+
+function M.reset_taps()
+  require("tidal.core.taptempo").reset()
+end
+
 return M

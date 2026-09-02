@@ -21,6 +21,7 @@ local keymaps = {
   show_tree = { callback = api.show_tree, desc = "Show SuperCollider node tree" },
   toggle_osc = { callback = api.toggle_osc, desc = "Toggle OSC listener" },
   toggle_visualizer = { callback = api.toggle_visualizer, desc = "Toggle visualizer floating window" },
+  toggle_taptempo = { callback = api.toggle_taptempo, desc = "Toggle tap tempo mode" },
 }
 
 local function setup_user_commands()
@@ -41,6 +42,8 @@ local function setup_user_commands()
 
   vim.api.nvim_create_user_command("TidalOSCToggle", api.toggle_osc, { desc = "Toggle OSC listener" })
   vim.api.nvim_create_user_command("TidalVisualizerToggle", api.toggle_visualizer, { desc = "Toggle visualizer floating window" })
+  vim.api.nvim_create_user_command("TidalTapTempo", api.toggle_taptempo, { desc = "Toggle tap tempo mode" })
+  vim.api.nvim_create_user_command("TidalTapTempoReset", api.reset_taps, { desc = "Reset tap tempo history" })
 end
 
 local function setup_autocmds()
@@ -79,6 +82,7 @@ local function setup_autocmds()
   vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
     group = "TidalRipple",
     callback = function()
+      require("tidal.core.taptempo").deactivate()
       api.exit_tidal()
     end,
   })

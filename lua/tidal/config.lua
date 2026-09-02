@@ -37,6 +37,7 @@ local defaults = {
     show_tree = { mode = { "n", "i", "x" }, key = "<F3>" },
     toggle_osc = { mode = "n", key = "<leader>o" },
     toggle_visualizer = { mode = "n", key = "<leader>v" },
+    toggle_taptempo = { mode = "n", key = "<leader>t" },
   },
   selection_highlight = {
     highlight = { link = "IncSearch" },
@@ -72,6 +73,11 @@ local defaults = {
     max_events_per_orbit = 4,
   },
   auto_launch = true,
+  taptempo = {
+    min_taps = 4,
+    max_taps = 16,
+    outlier_threshold = 0.3,
+  },
 }
 
 M.options = defaults

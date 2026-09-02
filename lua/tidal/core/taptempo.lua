@@ -14,7 +14,6 @@ local last_tap_time = nil
 local display_cps = nil
 local tap_ns = nil
 
-local CR_KEY = vim.keycode("<CR>")
 local ESC_KEY = vim.keycode("<Esc>")
 
 local function popup_opts()
@@ -93,17 +92,13 @@ end
 local function on_key(key, _)
   if key == ESC_KEY then
     M.deactivate()
-    return
   end
-
-  if key ~= CR_KEY then
-    return
-  end
-
-  record_tap()
 end
 
 local function send_cps(cps)
+  if not cps then
+    return
+  end
   message.tidal.send_line(string.format("setcps %f", cps))
   state.current_cps = cps
 end
@@ -135,8 +130,6 @@ function record_tap()
   end
 
   display_cps = cps
-  send_cps(cps)
-
   redraw()
 
   if #taps >= opts.max_taps then
@@ -329,6 +322,8 @@ function activate()
   end
   start_timer()
   callback_id = vim.on_key(on_key)
+  vim.keymap.set("n", "<CR>", record_tap, { desc = "Tap tempo tap" })
+  vim.keymap.set("i", "<CR>", record_tap, { desc = "Tap tempo tap" })
   redraw()
 end
 
@@ -337,10 +332,13 @@ function M.deactivate()
     return
   end
   active = false
+  send_cps(display_cps)
   if callback_id then
     pcall(vim.on_key, nil, callback_id)
     callback_id = nil
   end
+  pcall(vim.keymap.del, "n", "<CR>")
+  pcall(vim.keymap.del, "i", "<CR>")
   stop_timer()
   close_window()
   taps = {}

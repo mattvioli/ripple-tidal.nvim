@@ -95,6 +95,9 @@ local defaults = {
     border = "single",
   },
   auto_launch = true,
+  completion = {
+    enabled = true,
+  },
   taptempo = {
     min_taps = 4,
     max_taps = 16,

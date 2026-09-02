@@ -128,6 +128,7 @@ function Tidal.setup(options)
   setup_highlights()
   setup_autocmds()
   setup_user_commands()
+  require("tidal.completion").setup()
 end
 
 Tidal.api = api

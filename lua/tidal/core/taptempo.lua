@@ -221,7 +221,7 @@ function redraw()
   local cps_line = string.format("  CPS: %s", cps_str)
   cps_line = cps_line .. string.rep(" ", content_width - #cps_line)
 
-  local tap_count_str = string.format("%d/%d", math.min(#taps, p_opts.max_taps), p_opts.max_taps)
+  local tap_count_str = string.format("%d/%d", math.min(#taps, config.options.taptempo.max_taps), config.options.taptempo.max_taps)
   local counter_line = string.format("  taps: %s", tap_count_str)
   local close_hint = "  [q]  "
   counter_line = counter_line .. string.rep(" ", content_width - #counter_line - #close_hint) .. close_hint

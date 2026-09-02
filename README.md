@@ -12,11 +12,15 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 - `:TidalHush` / `:TidalSilence {n}` — stop patterns
 - SuperCollider visual tools: `show_meter`, `show_scope`, `show_tree`
 - Haskell syntax highlighting for `.tidal` files
+- Keymaps also available in `.scd` (SuperCollider) buffers
 - Flash-on-send highlight
+- Playhead sign markers (`▶`) on sent lines
+- Statusline component showing live CPS / cycle info
 - OSC-based cycle visualization (toggle with `:TidalOSCToggle`)
 - Floating window beat grid visualizer (toggle with `:TidalVisualizerToggle` or `<leader>v`)
 - Tap tempo (toggle with `:TidalTapTempo` or `<leader>t`)
 - **TidalLooper integration** — live sampling via SuperDirt (default off, enable with `boot.looper.enabled = true`)
+- Bundled `Looper.scd` boot file for TidalLooper
 - All visualization features are opt-in — enable them via the toggle commands or keymaps
 
 ## Installation
@@ -46,12 +50,21 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
       args = { "-v0" },
       file = vim.api.nvim_get_runtime_file("bootfiles/BootTidal.hs", false)[1],
       enabled = true,
+      osc_target = {
+        enabled = true,
+        port = 5050,
+        address = "127.0.0.1",
+        latency = 0.2,
+      },
     },
     sclang = {
       cmd = "sclang",
       args = {},
       file = vim.api.nvim_get_runtime_file("bootfiles/BootSuperDirt.scd", false)[1],
-      enabled = true, -- boot sclang by default (set false to disable)
+      enabled = true,     -- boot sclang by default (set false to disable)
+      kill_jack = true,   -- stop existing jackd before starting
+      soundcard = nil,    -- auto-detect; set e.g. "hw:0" to skip prompt
+      pre_cmd = nil,      -- command to run before sclang starts
     },
     looper = {
       enabled = false,       -- set true to enable TidalLooper
@@ -75,7 +88,9 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     show_meter  = { mode = { "n", "i", "x" }, key = "<F1>" },
     show_scope  = { mode = { "n", "i", "x" }, key = "<F2>" },
     show_tree   = { mode = { "n", "i", "x" }, key = "<F3>" },
+    toggle_osc        = { mode = "n", key = "<leader>o" },
     toggle_visualizer = { mode = "n", key = "<leader>v" },
+    toggle_taptempo   = { mode = "n", key = "<leader>t" },
     looper_record     = { mode = "n", key = "<leader>lr" },
     looper_overdub    = { mode = "n", key = "<leader>lo" },
     looper_free       = { mode = "n", key = "<leader>lf" },
@@ -87,7 +102,41 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     highlight = { link = "IncSearch" },
     timeout = 150,
   },
+  osc = {
+    port = 5050,
+    enabled = true,
+  },
+  playhead = {
+    enabled = true,
+    highlight = { link = "TidalRipplePlayhead" },
+  },
+  statusline = {
+    enabled = true,
+    format = "♩ {cps} CPS | c.{cycle}",
+  },
+  visualizer = {
+    width = 60,
+    height = 12,
+    border = "single",
+    refresh_interval_ms = 33,
+    grid = {
+      divisions = 4,
+      total_cycles = 1,
+      chars_per_beat = 8,
+    },
+    palette = {
+      "#FF6B6B", "#51CF66", "#FFD43B", "#339AF0",
+      "#CC5DE8", "#20C997", "#F06595", "#FF922B",
+    },
+    max_orbits = 8,
+    max_events_per_orbit = 4,
+  },
   auto_launch = true,
+  taptempo = {
+    min_taps = 4,
+    max_taps = 16,
+    outlier_threshold = 0.3,
+  },
 }
 ```
 
@@ -102,6 +151,8 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 | `:TidalSilence {n}` | Silence pattern d{n} (default: d0) |
 | `:TidalOSCToggle` | Toggle OSC cycle listener |
 | `:TidalVisualizerToggle` | Toggle beat grid visualizer floating window |
+| `:TidalTapTempo` | Toggle tap tempo mode (press `<CR>` in rhythm) |
+| `:TidalTapTempoReset` | Reset tap tempo history |
 | `:TidalLooperRecord` | Record loop on current orbit (count = orbit, default d1) |
 | `:TidalLooperOverdub` | Overdub loop on current orbit |
 | `:TidalLooperFree {n}` | Free loop buffer n |
@@ -112,7 +163,7 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 
 ## Boot file
 
-The plugin bundles `bootfiles/BootTidal.hs` and `bootfiles/BootSuperDirt.scd`. To use a custom boot file, set `boot.tidal.file` or `boot.sclang.file` in your config. The plugin also searches the project directory for `BootTidal.hs` as a fallback.
+The plugin bundles `bootfiles/BootTidal.hs`, `bootfiles/BootSuperDirt.scd`, and `bootfiles/Looper.scd` (used when TidalLooper is enabled). To use a custom boot file, set `boot.tidal.file` or `boot.sclang.file` in your config. The plugin also searches the project directory for `BootTidal.hs` as a fallback.
 
 ## Looper (TidalLooper)
 

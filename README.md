@@ -142,24 +142,24 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `:TidalLaunch` | Start GHCi + SuperCollider |
-| `:TidalQuit` | Stop all processes |
-| `:TidalToggle` | Show/hide the GHCi terminal window |
-| `:TidalHush` | Silence all patterns |
-| `:TidalSilence {n}` | Silence pattern d{n} (default: d0) |
-| `:TidalOSCToggle` | Toggle OSC cycle listener |
-| `:TidalVisualizerToggle` | Toggle beat grid visualizer floating window |
-| `:TidalTapTempo` | Toggle tap tempo mode (press `<CR>` in rhythm) |
-| `:TidalTapTempoReset` | Reset tap tempo history |
-| `:TidalLooperRecord` | Record loop on current orbit (count = orbit, default d1) |
-| `:TidalLooperOverdub` | Overdub loop on current orbit |
-| `:TidalLooperFree {n}` | Free loop buffer n |
-| `:TidalLooperFreeAll` | Free all loop buffers |
-| `:TidalLooperPersist {name}` | Persist loops to disk |
-| `:TidalLooperMode {replace\|overdub}` | Set looper mode |
-| `:TidalLooperInput {port}` | Set looper input port |
+| Command                               | Description                                              |
+| ------------------------------------- | -------------------------------------------------------- |
+| `:TidalLaunch`                        | Start GHCi + SuperCollider                               |
+| `:TidalQuit`                          | Stop all processes                                       |
+| `:TidalToggle`                        | Show/hide the GHCi terminal window                       |
+| `:TidalHush`                          | Silence all patterns                                     |
+| `:TidalSilence {n}`                   | Silence pattern d{n} (default: d0)                       |
+| `:TidalOSCToggle`                     | Toggle OSC cycle listener                                |
+| `:TidalVisualizerToggle`              | Toggle beat grid visualizer floating window              |
+| `:TidalTapTempo`                      | Toggle tap tempo mode (press `<CR>` in rhythm)           |
+| `:TidalTapTempoReset`                 | Reset tap tempo history                                  |
+| `:TidalLooperRecord`                  | Record loop on current orbit (count = orbit, default d1) |
+| `:TidalLooperOverdub`                 | Overdub loop on current orbit                            |
+| `:TidalLooperFree {n}`                | Free loop buffer n                                       |
+| `:TidalLooperFreeAll`                 | Free all loop buffers                                    |
+| `:TidalLooperPersist {name}`          | Persist loops to disk                                    |
+| `:TidalLooperMode {replace\|overdub}` | Set looper mode                                          |
+| `:TidalLooperInput {port}`            | Set looper input port                                    |
 
 ## Boot file
 
@@ -198,26 +198,26 @@ once $ s "persistLoops" # lname "loop"
 
 ### Keymaps
 
-| Key | Action |
-|-----|--------|
+| Key          | Action                                                                             |
+| ------------ | ---------------------------------------------------------------------------------- |
 | `<leader>lr` | Record loop on current orbit (use count prefix for orbit, e.g. `2<leader>lr` = d2) |
-| `<leader>lo` | Overdub loop on current orbit |
-| `<leader>lf` | Free loop buffer (use count prefix for buffer number) |
-| `<leader>lF` | Free all loop buffers |
-| `<leader>lm` | Cycle looper mode (replace ↔ overdub) |
-| `<leader>lp` | Persist loops to disk |
+| `<leader>lo` | Overdub loop on current orbit                                                      |
+| `<leader>lf` | Free loop buffer (use count prefix for buffer number)                              |
+| `<leader>lF` | Free all loop buffers                                                              |
+| `<leader>lm` | Cycle looper mode (replace ↔ overdub)                                             |
+| `<leader>lp` | Persist loops to disk                                                              |
 
 ### Commands
 
-| Command | Description |
-|---------|-------------|
-| `:TidalLooperRecord` | Record loop (count = orbit, default d1) |
-| `:TidalLooperOverdub` | Overdub loop (count = orbit, default d1) |
-| `:TidalLooperFree {n}` | Free loop buffer n |
-| `:TidalLooperFreeAll` | Free all loop buffers |
-| `:TidalLooperPersist {name}` | Persist loops to disk |
-| `:TidalLooperMode {replace\|overdub}` | Set looper mode |
-| `:TidalLooperInput {port}` | Set looper input port |
+| Command                               | Description                              |
+| ------------------------------------- | ---------------------------------------- |
+| `:TidalLooperRecord`                  | Record loop (count = orbit, default d1)  |
+| `:TidalLooperOverdub`                 | Overdub loop (count = orbit, default d1) |
+| `:TidalLooperFree {n}`                | Free loop buffer n                       |
+| `:TidalLooperFreeAll`                 | Free all loop buffers                    |
+| `:TidalLooperPersist {name}`          | Persist loops to disk                    |
+| `:TidalLooperMode {replace\|overdub}` | Set looper mode                          |
+| `:TidalLooperInput {port}`            | Set looper input port                    |
 
 ## Related
 
@@ -228,5 +228,3 @@ once $ s "persistLoops" # lname "loop"
 ## TODO
 
 - [ ] Test looper integration end-to-end
-- [ ] Test tap tempo functionality
-

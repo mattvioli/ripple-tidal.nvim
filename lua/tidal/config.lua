@@ -93,6 +93,16 @@ local defaults = {
     min_taps = 4,
     max_taps = 16,
     outlier_threshold = 0.3,
+    exit_factor = 3.0,
+    popup = {
+      width = 30,
+      height = 8,
+      border = "single",
+      flash_ms = 150,
+      refresh_ms = 50,
+      anim_width = 12,
+      anim_height = 3,
+    },
   },
 }
 

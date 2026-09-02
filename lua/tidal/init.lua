@@ -108,12 +108,19 @@ end
 
 local MIN_VERSION = "0.10.0"
 
+local function setup_highlights()
+  vim.api.nvim_set_hl(0, "TidalRippleTapHead", { fg = "#51CF66", bold = true, default = true })
+  vim.api.nvim_set_hl(0, "TidalRippleTapMid", { fg = "#2B8A3E", bold = true, default = true })
+  vim.api.nvim_set_hl(0, "TidalRippleTapTail", { fg = "#1C5E2D", default = true })
+end
+
 function Tidal.setup(options)
   if vim.fn.has("nvim-" .. MIN_VERSION) == 0 then
     notify.error("tidal-ripple.nvim requires nvim >= " .. MIN_VERSION)
     return
   end
   config.setup(options)
+  setup_highlights()
   setup_autocmds()
   setup_user_commands()
 end

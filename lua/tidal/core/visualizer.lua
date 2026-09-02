@@ -71,9 +71,15 @@ local function create_window()
 
   buf = vim.api.nvim_create_buf(false, true)
 
+  local row = ui.height - height - 1
+  local taptempo = require("tidal.core.taptempo")
+  if taptempo.is_active() then
+    row = row - taptempo.get_popup_height() - 1
+  end
+
   win = vim.api.nvim_open_win(buf, false, {
     relative = "editor",
-    row = ui.height - height - 1,
+    row = row,
     col = ui.width - width - 2,
     width = width,
     height = height,

@@ -14,6 +14,7 @@ local state = {
   current_cycle = nil,
   playhead = nil,
   visualizer_open = false,
+  looper_loaded = false,
 }
 
 return state

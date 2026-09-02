@@ -40,3 +40,7 @@ let
   set = streamSet tidal
   list = streamList tidal
   silenceOrbit = streamSilence tidal
+
+  linput = pI "linput"
+  lname = pS "lname"
+  recordSource = pS "recordSource"

@@ -252,4 +252,78 @@ function M.reset_taps()
   require("tidal.core.taptempo").reset()
 end
 
+-- Looper API
+
+function M.looper_record()
+  local orbit = vim.v.count > 0 and vim.v.count or 1
+  message.tidal.send_line(string.format("d%d $ s \"rlooper\"", orbit))
+end
+
+function M.looper_overdub()
+  local orbit = vim.v.count > 0 and vim.v.count or 1
+  message.tidal.send_line(string.format("d%d $ s \"olooper\"", orbit))
+end
+
+function M.looper_free()
+  local buf = vim.v.count
+  if buf > 0 then
+    message.tidal.send_line(string.format("once $ s \"freeLoops\" # n \"%d\"", buf))
+  else
+    M.looper_free_all()
+  end
+end
+
+function M.looper_free_all()
+  message.tidal.send_line("once $ s \"freeLoops\"")
+end
+
+function M.looper_set_mode(mode)
+  if mode == "overdub" then
+    if state.sclang and state.sclang:is_running() then
+      state.sclang:send_line("~pLevel = 1.0;")
+    end
+    config.options.boot.looper.p_level = 1.0
+  else
+    if state.sclang and state.sclang:is_running() then
+      state.sclang:send_line("~pLevel = 0.0;")
+    end
+    config.options.boot.looper.p_level = 0.0
+  end
+end
+
+function M.looper_cycle_mode()
+  local current = config.options.boot.looper.p_level
+  if current and current > 0.5 then
+    M.looper_set_mode("replace")
+    notify.info("Looper mode: replace")
+  else
+    M.looper_set_mode("overdub")
+    notify.info("Looper mode: overdub")
+  end
+end
+
+function M.looper_persist()
+  local name = vim.v.count > 0 and tostring(vim.v.count) or config.options.boot.looper.default_name or "loop"
+  message.tidal.send_line(string.format("once $ s \"persistLoops\" # lname \"%s\"", name))
+end
+
+function M.looper_set_input(port)
+  port = port or config.options.boot.looper.default_input or 0
+  if state.sclang and state.sclang:is_running() then
+    state.sclang:send_line(string.format("~linput = %d;", port))
+  end
+  config.options.boot.looper.default_input = port
+end
+
+function M.looper_mode_complete(lead, _line, _pos)
+  local modes = { "replace", "overdub" }
+  local matches = {}
+  for _, mode in ipairs(modes) do
+    if mode:find(lead) == 1 then
+      table.insert(matches, mode)
+    end
+  end
+  return matches
+end
+
 return M

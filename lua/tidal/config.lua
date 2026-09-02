@@ -54,6 +54,8 @@ local defaults = {
     looper_mode_cycle = { mode = "n", key = "<leader>lm" },
     looper_persist = { mode = "n", key = "<leader>lp" },
     toggle_taptempo = { mode = "n", key = "<leader>t" },
+    toggle_sample_browser = { mode = "n", key = "<leader>a" },
+    investigate_sample = { mode = "n", key = "<leader>i" },
   },
   selection_highlight = {
     highlight = { link = "IncSearch" },
@@ -87,6 +89,10 @@ local defaults = {
     },
     max_orbits = 8,
     max_events_per_orbit = 4,
+  },
+  sample_browser = {
+    width_ratio = 0.33,
+    border = "single",
   },
   auto_launch = true,
   taptempo = {

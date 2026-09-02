@@ -28,6 +28,8 @@ local keymaps = {
   looper_free_all = { callback = api.looper_free_all, desc = "Free all loop buffers" },
   looper_mode_cycle = { callback = api.looper_cycle_mode, desc = "Cycle looper mode (replace/overdub)" },
   looper_persist = { callback = api.looper_persist, desc = "Persist loops to disk" },
+  toggle_sample_browser = { callback = api.toggle_sample_browser, desc = "Toggle sample bank browser" },
+  investigate_sample = { callback = api.investigate_sample, desc = "Investigate sample bank under cursor" },
 }
 
 local function setup_user_commands()
@@ -62,6 +64,9 @@ local function setup_user_commands()
   vim.api.nvim_create_user_command("TidalLooperInput", function(opts)
     api.looper_set_input(tonumber(opts.args))
   end, { nargs = 1, desc = "Set looper input port" })
+
+  vim.api.nvim_create_user_command("TidalSampleBrowser", api.toggle_sample_browser, { desc = "Toggle sample bank browser" })
+  vim.api.nvim_create_user_command("TidalSampleInvestigate", api.investigate_sample, { desc = "Investigate sample bank under cursor" })
 end
 
 local function setup_autocmds()

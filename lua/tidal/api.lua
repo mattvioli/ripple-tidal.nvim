@@ -326,4 +326,12 @@ function M.looper_mode_complete(lead, _line, _pos)
   return matches
 end
 
+function M.toggle_sample_browser()
+  require("tidal.core.sample_browser").toggle()
+end
+
+function M.investigate_sample()
+  require("tidal.core.sample_browser").investigate()
+end
+
 return M

@@ -3,30 +3,23 @@ local M = {}
 local symbols = {}
 local buf_ns = nil
 
-local param_patterns = {
-  sound = { "s%s*=", "sound%s*=" },
-  note = { "n%s*=", "note%s*=" },
-}
-
 local function extract_param_value(line, param_name)
-  for _, pat in ipairs(param_patterns[param_name] or {}) do
-    local _, _, val = line:find(pat .. '%s+"([^"]+)"')
-    if val then return val end
-  end
-  local _, _, val = line:find(param_name .. '%s+"([^"]+)"')
-  return val
+  return line:match('%f[%w]' .. param_name .. '%s+"([^"]+)"')
 end
 
 local function parse_let_line(line)
   line = line:gsub("%-%-.*$", "")
-  local _, _, name, rest = line:find("let%s+(%w+)%s*=%s*(.*)")
-  if not name then
-    _, _, name, rest = line:find("^(%w+)%s*=%s*(.*)")
+  local name = line:match("^%s*let%s+([%w_%-]+)%s*=%s*(.*)$")
+  local rest
+  if name then
+    rest = line:match("^%s*let%s+[%w_%-]+%s*=%s*(.*)$")
+  else
+    name, rest = line:match("^%s*([%w_%-]+)%s*=%s*(.*)$")
   end
   if not name or not rest then return nil end
 
   local info = { name = name, raw = rest }
-  local sound_val = extract_param_value(rest, "sound")
+  local sound_val = extract_param_value(rest, "sound") or extract_param_value(rest, "s")
   if sound_val then
     info.type = "sound"
     info.bank = sound_val:match("^([%w_%-]+)")
@@ -73,38 +66,64 @@ function M.scan_buffer(buf)
   if not vim.api.nvim_buf_is_valid(buf) then return end
 
   local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local let_lines = {}
+
   local in_let = false
-  local let_acc = ""
+  local let_start_indent = 0
 
   for _, line in ipairs(lines) do
-    if line:match("^%s*let%s") and not line:match("^%s*let%s+in") then
+    if line:match("^%s*let%s+[%w_%-]+") and not line:match("^%s*let%s+in") then
       in_let = true
-      let_acc = line
+      let_lines = { line }
+      let_start_indent = #(line:match("^(%s*)"))
     elseif in_let then
-      let_acc = let_acc .. " " .. line
-      if line:match("in%s*$") or line:match("^%s*in%s") then
-        in_let = false
-        local current = ""
-        for part in let_acc:gmatch("[^,]+") do
-          if not part:match("^%s*in") then
-            local info = parse_let_line(part)
-            if info then
-              symbols[info.name] = info
-            end
-          end
+      local stripped = line:gsub("^%s*", "")
+      if stripped == "" or stripped:match("^%-%-") then
+        let_lines[#let_lines + 1] = line
+      elseif line:match("^%s*[%w_%-]+%s*=") then
+        local indent = #(line:match("^(%s*)"))
+        if indent > let_start_indent or stripped:match("^let") then
+          let_lines[#let_lines + 1] = line
+        else
+          in_let = false
         end
-        let_acc = ""
+      elseif stripped:match("^in%s") or stripped == "in" then
+        in_let = false
+        let_lines = {}
+      else
+        in_let = false
       end
     end
 
-    local info = parse_p_line(line)
-    if info then
-      symbols[info.name] = info
+    if not in_let and #let_lines > 0 then
+      for _, l in ipairs(let_lines) do
+        local info = parse_let_line(l)
+        if info then
+          symbols[info.name] = info
+        end
+      end
+      let_lines = {}
     end
 
-    info = parse_d_line(line)
-    if info then
-      symbols[info.name] = info
+    if not in_let then
+      local info = parse_p_line(line)
+      if info then
+        symbols[info.name] = info
+      end
+
+      info = parse_d_line(line)
+      if info then
+        symbols[info.name] = info
+      end
+    end
+  end
+
+  if #let_lines > 0 then
+    for _, l in ipairs(let_lines) do
+      local info = parse_let_line(l)
+      if info then
+        symbols[info.name] = info
+      end
     end
   end
 end

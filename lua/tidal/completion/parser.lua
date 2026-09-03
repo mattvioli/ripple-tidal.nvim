@@ -222,15 +222,14 @@ local function get_context_fallback(buf, row, col)
   if #lines == 0 then return { type = "empty" } end
   local line = lines[1]
 
-  local text_before = line:sub(1, col)
-  local text_at = line:sub(col, col)
+  local text_before = line:sub(1, col + 1)
+  local text_at = line:sub(col + 1, col + 1)
 
   local in_string = false
   local string_start = nil
-  local param_before = nil
   local param_name = nil
 
-  for i = 1, #line do
+  for i = 1, col + 1 do
     local c = line:sub(i, i)
     if c == '"' then
       if not in_string then
@@ -242,9 +241,6 @@ local function get_context_fallback(buf, row, col)
           param_name = pname
         end
       else
-        if i >= col then
-          break
-        end
         in_string = false
         string_start = nil
       end
@@ -252,69 +248,57 @@ local function get_context_fallback(buf, row, col)
   end
 
   if in_string and string_start then
-    local inner_start = string_start + 1
-    local inner = line:sub(inner_start, col - 1)
-    local cursor_inner = col - inner_start
-
+    local inner = line:sub(string_start + 1, col + 1)
+    local prefix = inner:match("([%w_%-:]*)$") or ""
     if param_name == "s" or param_name == "sound" then
-      local prefix = inner:match("([%w_%-:]*)$")
-      return { type = "sample", prefix = prefix or "", param = param_name }
+      return { type = "sample", prefix = prefix, param = param_name }
     elseif param_name == "n" or param_name == "note" then
       local s_val = find_param_on_line_fallback(buf, row, "s")
         or find_param_on_line_fallback(buf, row, "sound")
-      local prefix = inner:match("([%w_%-:]*)$")
-      return { type = "index", prefix = prefix or "", bank = s_val, param = param_name }
-    else
-      local prefix = inner:match("([%w_%-:]*)$")
-      return { type = "param_value", prefix = prefix or "", param = param_name }
+      return { type = "index", prefix = prefix, bank = s_val, param = param_name }
+    elseif param_name then
+      return { type = "param_value", prefix = prefix, param = param_name }
     end
+    return { type = "string", prefix = prefix, param = param_name }
   end
 
-  local prefix = text_before:match("([%w_%-]+)$")
-  if prefix then
-    if text_at == " " or text_at == "" or text_at == '"' then
-      return { type = "keyword", prefix = prefix }
-    end
-  end
-
-  if text_before:match("#%s*$") or text_before:match("#%s+$") then
+  if text_before:match("#%s*$") then
     return { type = "param" }
   end
 
-  if text_before:match("%$%s*$") or text_before:match("%$%s+$") then
+  if text_before:match("%$%s*$") then
     return { type = "function" }
   end
 
+  local prefix = text_before:match("([%w_%-]+)$")
   return { type = "keyword", prefix = prefix or "" }
+end
+
+local function string_prefix(inner, cursor_inner)
+  local content = inner:sub(1, cursor_inner)
+  return content:match("([%w_%-:]*)$") or ""
 end
 
 function M.get_context(buf, row, col)
   if not buf then buf = 0 end
 
-  if ts_available then
-    local str_info = get_string_content_at_cursor_ts(buf, row - 1, col - 1)
-    if str_info then
-      if str_info.param == "s" or str_info.param == "sound" then
-        local prefix = str_info.miniton.type == "word" and str_info.miniton.value or ""
-        return { type = "sample", prefix = prefix, param = str_info.param }
-      elseif str_info.param == "n" or str_info.param == "note" then
-        local s_val = find_param_on_line(buf, row, "s") or find_param_on_line(buf, row, "sound")
-        local prefix = str_info.miniton.type == "word" and str_info.miniton.value
-          or str_info.miniton.type == "number" and str_info.miniton.value
-          or ""
-        return { type = "index", prefix = prefix, bank = s_val, param = str_info.param }
-      elseif str_info.param then
-        local prefix = str_info.miniton.type == "word" and str_info.miniton.value
-          or str_info.miniton.type == "number" and str_info.miniton.value
-          or ""
-        return { type = "param_value", prefix = prefix, param = str_info.param }
-      end
-      return { type = "string", param = str_info.param }
-    end
+  local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
+  if #line == 0 then return { type = "empty" } end
 
-    local param = get_param_at_cursor_ts(buf, row - 1, col - 1)
-    if param then
-      return { type = "param_name", name = param.name }
+  local ts_str = nil
+  if ts_available then
+    ts_str = get_string_content_at_cursor_ts(buf, row - 1, col)
+  end
+
+  if ts_str and ts_str.param then
+    local prefix = string_prefix(ts_str.inner, ts_str.cursor_col)
+    if ts_str.param == "s" or ts_str.param == "sound" then
+      return { type = "sample", prefix = prefix, param = ts_str.param }
+    elseif ts_str.param == "n" or ts_str.param == "note" then
+      local s_val = find_param_on_line(buf, row, "s") or find_param_on_line(buf, row, "sound")
+      return { type = "index", prefix = prefix, bank = s_val, param = ts_str.param }
+    elseif ts_str.param then
+      return { type = "param_value", prefix = prefix, param = ts_str.param }
     end
   end
 

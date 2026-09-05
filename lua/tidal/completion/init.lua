@@ -99,18 +99,15 @@ function M.setup()
     local ok, cmp_mod = pcall(require, "tidal.completion.cmp")
 
     if use_cmp and ok and cmp_mod.register() then
-      -- nvim-cmp backend: set up buffer-local Tab/Shift-Tab navigation.
-      if conf.navigation ~= false then
-        vim.api.nvim_create_autocmd("BufEnter", {
-          pattern = "*.tidal",
-          callback = function(args)
-            if vim.bo[args.buf].filetype == "haskell" then
-              symbols.scan_buffer(args.buf)
-              cmp_mod.setup_navigation(args.buf)
-            end
-          end,
-        })
-      end
+      -- nvim-cmp backend.
+      vim.api.nvim_create_autocmd("BufEnter", {
+        pattern = "*.tidal",
+        callback = function(args)
+          if vim.bo[args.buf].filetype == "haskell" then
+            symbols.scan_buffer(args.buf)
+          end
+        end,
+      })
       return
     end
 
@@ -124,22 +121,12 @@ function M.setup()
       end
     end
 
-    vim.api.nvim_create_autocmd("FileType", {
+vim.api.nvim_create_autocmd("FileType", {
       pattern = "haskell",
       callback = function(args)
         if vim.bo[args.buf].filetype == "haskell" then
           vim.bo[args.buf].omnifunc = "v:lua.require'tidal.completion'.complete"
           symbols.scan_buffer(args.buf)
-          vim.keymap.set("i", "<Tab>",
-            function()
-              return vim.fn.pumvisible() ~= 0 and "<C-n>" or "<Tab>"
-            end,
-            { expr = true, buffer = args.buf })
-          vim.keymap.set("i", "<CR>",
-            function()
-              return vim.fn.pumvisible() ~= 0 and "<C-y>" or "<CR>"
-            end,
-            { buffer = args.buf, silent = true })
         end
       end,
     })

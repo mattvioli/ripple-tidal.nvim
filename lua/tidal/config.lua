@@ -98,7 +98,6 @@ local defaults = {
   completion = {
     enabled = true,
     backend = "cmp",
-    navigation = true,
     source_name = "tidal",
   },
   taptempo = {

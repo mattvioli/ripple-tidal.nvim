@@ -69,35 +69,4 @@ function M.register()
   return true
 end
 
-function M.setup_navigation(buf)
-  local ok, cmp = pcall(require, "cmp")
-  if not ok then
-    return
-  end
-
-  vim.keymap.set("i", "<Tab>", function()
-    if cmp.visible() then
-      cmp.select_next_item()
-    else
-      vim.api.nvim_feedkeys(
-        vim.api.nvim_replace_termcodes("<Tab>", true, false, true),
-        "n",
-        false
-      )
-    end
-  end, { buffer = buf })
-
-  vim.keymap.set("i", "<S-Tab>", function()
-    if cmp.visible() then
-      cmp.select_prev_item()
-    else
-      vim.api.nvim_feedkeys(
-        vim.api.nvim_replace_termcodes("<S-Tab>", true, false, true),
-        "n",
-        false
-      )
-    end
-  end, { buffer = buf })
-end
-
 return M

@@ -6,7 +6,7 @@ local notify = require("tidal.util.notify")
 local M = {}
 
 local notified = false
-local checking = false
+local debounce = nil
 
 local function current_context()
   local row, col = unpack(vim.api.nvim_win_get_cursor(0))
@@ -16,29 +16,10 @@ end
 
 local function prefix_len(ctx)
   if ctx.type == "sample" or ctx.type == "index" or ctx.type == "param_value"
-    or ctx.type == "keyword" then
+    or ctx.type == "keyword" or ctx.type == "param" or ctx.type == "function" then
     return (ctx.prefix or ""):len()
   end
   return 0
-end
-
-function M.complete(findstart, base)
-  if findstart == 1 then
-    local ctx = current_context()
-
-    if not parser.is_ts_available() and not notified then
-      notified = true
-      notify.info("tidal-ripple autocomplete: nvim-treesitter with haskell parser recommended for best results")
-    end
-
-    local col = vim.fn.col(".") - 1
-    local startcol = col - prefix_len(ctx) + 1
-    if startcol < 1 then startcol = 1 end
-    return startcol
-  end
-
-  local ctx = current_context()
-  return parser.get_completions(ctx)
 end
 
 local function should_autocomplete(ctx)
@@ -54,30 +35,111 @@ local function should_autocomplete(ctx)
   return false
 end
 
-local function popup()
-  if checking then return end
-  checking = true
-  vim.schedule(function()
-    if vim.fn.pumvisible() == 1 then
-      checking = false
-      return
-    end
+function M.complete(findstart, base)
+  if findstart == 1 then
     local ctx = current_context()
-    if should_autocomplete(ctx) then
-      vim.fn.complete(vim.fn.col(".") - prefix_len(ctx), parser.get_completions(ctx))
+
+    if not parser.is_ts_available() and not notified then
+      notified = true
+      notify.info("tidal-ripple autocomplete: nvim-treesitter with haskell parser recommended for best results")
     end
-    checking = false
+
+    local col = vim.fn.col(".") - 1
+    local startcol = col - prefix_len(ctx)
+    if startcol < 0 then startcol = 0 end
+    return startcol
+  end
+
+  local ctx = current_context()
+  if base and base ~= "" then
+    ctx.prefix = base
+  end
+  if not should_autocomplete(ctx) then
+    return {}
+  end
+  return parser.get_completions(ctx)
+end
+
+local function trigger_omnifunc()
+  if vim.fn.pumvisible() ~= 0 then return end
+  local ctx = current_context()
+  if not should_autocomplete(ctx) then return end
+  if #parser.get_completions(ctx) == 0 then return end
+  vim.schedule(function()
+    if vim.fn.pumvisible() ~= 0 then return end
+    local scheduled_ctx = current_context()
+    if not should_autocomplete(scheduled_ctx) then return end
+    if #parser.get_completions(scheduled_ctx) == 0 then return end
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes("<C-x><C-o>", true, false, true),
+      "n",
+      false
+    )
   end)
+end
+
+local function popup()
+  if debounce then debounce:stop() end
+  debounce = vim.loop.new_timer()
+  debounce:start(70, 0, vim.schedule_wrap(function()
+    debounce:stop()
+    if vim.fn.pumvisible() ~= 0 then return end
+    local ctx = current_context()
+    if not should_autocomplete(ctx) then return end
+    pcall(trigger_omnifunc)
+  end))
 end
 
 function M.setup()
   if not config.options.completion or config.options.completion.enabled ~= false then
+    local conf = config.options.completion or {}
+    local backend = conf.backend or "cmp"
+    local use_cmp = backend == "cmp"
+
+    local ok, cmp_mod = pcall(require, "tidal.completion.cmp")
+
+    if use_cmp and ok and cmp_mod.register() then
+      -- nvim-cmp backend: set up buffer-local Tab/Shift-Tab navigation.
+      if conf.navigation ~= false then
+        vim.api.nvim_create_autocmd("BufEnter", {
+          pattern = "*.tidal",
+          callback = function(args)
+            if vim.bo[args.buf].filetype == "haskell" then
+              symbols.scan_buffer(args.buf)
+              cmp_mod.setup_navigation(args.buf)
+            end
+          end,
+        })
+      end
+      return
+    end
+
+    -- Fallback: pure omnifunc autocompletion.
+    use_cmp = false
+    local opt = vim.o.completeopt
+    for _, flag in ipairs({ "menuone", "noinsert", "noselect" }) do
+      if not vim.tbl_contains(vim.split(opt, ","), flag) then
+        vim.o.completeopt = opt == "" and flag or (opt .. "," .. flag)
+        opt = vim.o.completeopt
+      end
+    end
+
     vim.api.nvim_create_autocmd("FileType", {
       pattern = "haskell",
       callback = function(args)
         if vim.bo[args.buf].filetype == "haskell" then
           vim.bo[args.buf].omnifunc = "v:lua.require'tidal.completion'.complete"
           symbols.scan_buffer(args.buf)
+          vim.keymap.set("i", "<Tab>",
+            function()
+              return vim.fn.pumvisible() ~= 0 and "<C-n>" or "<Tab>"
+            end,
+            { expr = true, buffer = args.buf })
+          vim.keymap.set("i", "<CR>",
+            function()
+              return vim.fn.pumvisible() ~= 0 and "<C-y>" or "<CR>"
+            end,
+            { buffer = args.buf, silent = true })
         end
       end,
     })

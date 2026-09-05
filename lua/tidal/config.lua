@@ -97,6 +97,9 @@ local defaults = {
   auto_launch = true,
   completion = {
     enabled = true,
+    backend = "cmp",
+    navigation = true,
+    source_name = "tidal",
   },
   taptempo = {
     min_taps = 4,

@@ -262,12 +262,14 @@ local function get_context_fallback(buf, row, col)
     return { type = "string", prefix = prefix, param = param_name }
   end
 
-  if text_before:match("#%s*$") then
-    return { type = "param" }
+  local param_prefix = text_before:match("#%s+([%w_%-]*)$")
+  if text_before:match("#%s*$") or (param_prefix and param_prefix ~= "") then
+    return { type = "param", prefix = param_prefix or "" }
   end
 
-  if text_before:match("%$%s*$") then
-    return { type = "function" }
+  local func_prefix = text_before:match("%$%s+([%w_%-]*)$")
+  if text_before:match("%$%s*$") or (func_prefix and func_prefix ~= "") then
+    return { type = "function", prefix = func_prefix or "" }
   end
 
   local prefix = text_before:match("([%w_%-]+)$")
@@ -367,18 +369,22 @@ function M.get_completions(ctx)
   if ctx.type == "param" then
     local results = {}
     for _, p in ipairs(data.control_params) do
-      table.insert(results, {
-        word = p.word,
-        menu = "[" .. (p.menu or "") .. "]",
-        info = p.info or "",
-      })
+      if not prefix or p.word:lower():find(prefix, 1, true) == 1 then
+        table.insert(results, {
+          word = p.word,
+          menu = "[" .. (p.menu or "") .. "]",
+          info = p.info or "",
+        })
+      end
       if p.aliases then
         for _, a in ipairs(p.aliases) do
-          table.insert(results, {
-            word = a,
-            menu = "[" .. (p.menu or "") .. "]",
-            info = "alias for " .. p.word,
-          })
+          if not prefix or a:lower():find(prefix, 1, true) == 1 then
+            table.insert(results, {
+              word = a,
+              menu = "[" .. (p.menu or "") .. "]",
+              info = "alias for " .. p.word,
+            })
+          end
         end
       end
     end
@@ -387,13 +393,34 @@ function M.get_completions(ctx)
 
   if ctx.type == "function" then
     local results = {}
-    for _, f in ipairs(data.pattern_functions) do
-      table.insert(results, {
-        word = f.word,
-        menu = "[" .. (f.menu or "") .. "]",
-        info = f.info or "",
-      })
+    local seen = {}
+
+    local function add(list, menu_prefix)
+      for _, item in ipairs(list) do
+        local word = item.word
+        if not seen[word] and (not prefix or word:lower():find(prefix, 1, true) == 1) then
+          seen[word] = true
+          table.insert(results, {
+            word = word,
+            menu = "[" .. menu_prefix .. "]",
+            info = item.info or "",
+          })
+        end
+      end
     end
+
+    add(data.pattern_functions, "fun")
+    add(data.top_level, "cmd")
+    add(data.oscillators, "osc")
+    add(data.orbit_aliases, "orbit")
+
+    for _, s in ipairs(symbols.get_all_symbols()) do
+      if not seen[s.word] and (not prefix or s.word:lower():find(prefix, 1, true) == 1) then
+        seen[s.word] = true
+        table.insert(results, s)
+      end
+    end
+
     return results
   end
 

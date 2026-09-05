@@ -48,17 +48,12 @@ local function parse_p_line(line)
   return info
 end
 
-local function parse_d_line(line)
-  line = line:gsub("%-%-.*$", "")
-  local _, _, num, rest = line:find("^d(%d+)%s+%$%s*(.*)")
-  if not num then return nil end
-  local info = { name = "d" .. num, raw = rest }
-  local sound_val = extract_param_value(rest, "sound") or extract_param_value(rest, "s")
-  if sound_val then
-    info.type = "sound"
-    info.bank = sound_val:match("^([%w_%-]+)")
-  end
-  return info
+local function starts_let_block(line)
+  local stripped = line:gsub("^%s*", "")
+  if not stripped:match("^let") then return false end
+  if stripped:match("^let%s+in") then return false end
+  local rest = stripped:sub(4)
+  return rest == "" or rest:match("^%s+[%w_%-]+") ~= nil
 end
 
 function M.scan_buffer(buf)
@@ -69,63 +64,53 @@ function M.scan_buffer(buf)
   local let_lines = {}
 
   local in_let = false
-  local let_start_indent = 0
 
-  for _, line in ipairs(lines) do
-    if line:match("^%s*let%s+[%w_%-]+") and not line:match("^%s*let%s+in") then
-      in_let = true
-      let_lines = { line }
-      let_start_indent = #(line:match("^(%s*)"))
-    elseif in_let then
-      local stripped = line:gsub("^%s*", "")
-      if stripped == "" or stripped:match("^%-%-") then
-        let_lines[#let_lines + 1] = line
-      elseif line:match("^%s*[%w_%-]+%s*=") then
-        local indent = #(line:match("^(%s*)"))
-        if indent > let_start_indent or stripped:match("^let") then
-          let_lines[#let_lines + 1] = line
-        else
-          in_let = false
-        end
-      elseif stripped:match("^in%s") or stripped == "in" then
-        in_let = false
-        let_lines = {}
-      else
-        in_let = false
-      end
-    end
-
-    if not in_let and #let_lines > 0 then
-      for _, l in ipairs(let_lines) do
-        local info = parse_let_line(l)
-        if info then
-          symbols[info.name] = info
-        end
-      end
-      let_lines = {}
-    end
-
-    if not in_let then
-      local info = parse_p_line(line)
-      if info then
-        symbols[info.name] = info
-      end
-
-      info = parse_d_line(line)
-      if info then
-        symbols[info.name] = info
-      end
-    end
-  end
-
-  if #let_lines > 0 then
+  local function flush_let_lines()
+    if #let_lines == 0 then return end
     for _, l in ipairs(let_lines) do
       local info = parse_let_line(l)
       if info then
         symbols[info.name] = info
       end
     end
+    let_lines = {}
   end
+
+  for _, line in ipairs(lines) do
+    local stripped = line:gsub("^%s*", "")
+
+    if stripped == "" or stripped:match("^%-%-") then
+      if in_let then
+        let_lines[#let_lines + 1] = line
+      end
+    elseif starts_let_block(line) then
+      if in_let then
+        flush_let_lines()
+      end
+      in_let = true
+      let_lines = { line }
+    elseif in_let then
+      if stripped == "in" or stripped:match("^in%s") then
+        in_let = false
+      else
+        let_lines[#let_lines + 1] = line
+      end
+    end
+
+    if not in_let then
+      flush_let_lines()
+      local info = parse_p_line(line)
+      if info then
+        symbols[info.name] = info
+      end
+      info = parse_let_line(line)
+      if info then
+        symbols[info.name] = info
+      end
+    end
+  end
+
+  flush_let_lines()
 end
 
 function M.get_symbol(name)

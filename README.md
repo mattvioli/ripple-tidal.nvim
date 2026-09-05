@@ -228,3 +228,5 @@ once $ s "persistLoops" # lname "loop"
 ## TODO
 
 - [ ] Test looper integration end-to-end
+- [ ] Support multiple time signatures across bars in a single tap tempo session
+- [ ] Auto-write a TidalCycles orbit pattern to the main buffer based on detected time signature

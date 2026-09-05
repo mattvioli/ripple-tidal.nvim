@@ -5,16 +5,19 @@ local state = require("tidal.core.state")
 local M = {}
 
 local taps = {}
+local subbeats = 0
 local active = false
-local callback_id = nil
 local win = nil
 local buf = nil
 local timer = nil
 local last_tap_time = nil
 local display_cps = nil
 local tap_ns = nil
-
-local ESC_KEY = vim.keycode("<Esc>")
+local time_sig_num = nil
+local time_sig_denom = nil
+local bpm = nil
+local target_buf = nil
+local cps_sent = false
 
 local function popup_opts()
   return config.options.taptempo.popup
@@ -28,10 +31,53 @@ local function get_popup_row()
   local p_opts = popup_opts()
   local row = ui.height - p_opts.height - 1
   local viz = require("tidal.core.visualizer")
-  if viz.is_open() then
-    row = row - config.options.visualizer.height - 1
+  local viz_win = viz.get_window()
+  if viz_win and vim.api.nvim_win_is_valid(viz_win) then
+    local cfg = vim.api.nvim_win_get_config(viz_win)
+    local viz_top = cfg.row - 1
+    row = viz_top - p_opts.height - 2
   end
   return math.max(row, 0)
+end
+
+local function infer_denominator(numerator)
+  if numerator >= 6 and numerator % 3 == 0 then
+    return 8
+  end
+  return 4
+end
+
+local BIG_DIGITS = {
+  ["0"] = { "███", "█ █", "█ █", "█ █", "███" },
+  ["1"] = { " █ ", "██ ", " █ ", " █ ", "███" },
+  ["2"] = { "███", "  █", "███", "█  ", "███" },
+  ["3"] = { "███", "  █", "███", "  █", "███" },
+  ["4"] = { "█ █", "█ █", "███", "  █", "  █" },
+  ["5"] = { "███", "█  ", "███", "  █", "███" },
+  ["6"] = { "███", "█  ", "███", "█ █", "███" },
+  ["7"] = { "███", "  █", "  █", "  █", "  █" },
+  ["8"] = { "███", "█ █", "███", "█ █", "███" },
+  ["9"] = { "███", "█ █", "███", "  █", "███" },
+  ["/"] = { "  █", "  █", " █ ", "█  ", "█  " },
+  [":"] = { "   ", " █ ", "   ", " █ ", "   " },
+  [" "] = { "   ", "   ", "   ", "   ", "   " },
+}
+
+local function big_lines(str)
+  local out = {}
+  for row = 1, 5 do
+    local line = {}
+    for i = 1, #str do
+      local ch = str:sub(i, i)
+      local glyph = BIG_DIGITS[ch] or BIG_DIGITS[" "]
+      if #line > 0 then
+        table.insert(line, " ")
+      end
+      table.insert(line, glyph[row])
+    end
+    table.insert(out, table.concat(line))
+  end
+  return out
 end
 
 local function calculate_cps()
@@ -89,18 +135,23 @@ local function check_outlier_exit()
   return latest > median * opts.exit_factor
 end
 
-local function on_key(key, _)
-  if key == ESC_KEY then
-    M.deactivate()
+local function update_time_sig()
+  if #taps > 0 then
+    time_sig_num = 1 + subbeats
+    time_sig_denom = infer_denominator(time_sig_num)
   end
 end
 
 local function send_cps(cps)
-  if not cps then
+  if not cps or cps_sent then
     return
   end
+  cps_sent = true
   message.tidal.send_line(string.format("setcps %f", cps))
   state.current_cps = cps
+  state.current_bpm = bpm
+  state.current_time_sig_num = time_sig_num
+  state.current_time_sig_denom = time_sig_denom
 end
 
 function record_tap()
@@ -110,6 +161,7 @@ function record_tap()
   if #taps > opts.max_taps then
     table.remove(taps, 1)
   end
+  subbeats = 0
 
   if check_outlier_exit() then
     M.deactivate()
@@ -117,6 +169,7 @@ function record_tap()
   end
 
   last_tap_time = vim.uv.now()
+  update_time_sig()
 
   if #taps < opts.min_taps then
     redraw()
@@ -130,11 +183,21 @@ function record_tap()
   end
 
   display_cps = cps
-  redraw()
-
-  if #taps >= opts.max_taps then
-    M.deactivate()
+  if time_sig_num then
+    bpm = display_cps * 60 * time_sig_num
   end
+  send_cps(display_cps)
+  redraw()
+end
+
+function record_subtap()
+  subbeats = subbeats + 1
+  last_tap_time = vim.uv.now()
+  update_time_sig()
+  if display_cps and time_sig_num then
+    bpm = display_cps * 60 * time_sig_num
+  end
+  redraw()
 end
 
 local function setup_namespace()
@@ -165,10 +228,25 @@ local function create_window()
     border = p_opts.border,
   })
   vim.api.nvim_win_set_option(win, "winhl", "Normal:NormalFloat")
+  M.reposition()
+end
 
-  local map_opts = { buffer = buf, nowait = true, silent = true }
-  vim.keymap.set("n", "q", M.deactivate, map_opts)
-  vim.keymap.set("n", "<Esc>", M.deactivate, map_opts)
+function M.reposition()
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+  local ui = vim.api.nvim_list_uis()[1]
+  if not ui then
+    return
+  end
+  local width = math.min(popup_opts().width, ui.width - 4)
+  local col = ui.width - width - 2
+  vim.api.nvim_win_set_config(win, { relative = "editor", row = get_popup_row(), col = col })
+
+  local viz = require("tidal.core.visualizer")
+  if viz.get_window() then
+    viz.reposition()
+  end
 end
 
 local function close_window()
@@ -204,97 +282,96 @@ function redraw()
   local p_opts = popup_opts()
   local content_width = p_opts.width - 2
 
-  local cps_str
-  if display_cps then
-    cps_str = string.format("%.3f", display_cps)
-  else
-    cps_str = "--"
+  local bpm_str = "--"
+  if bpm then
+    bpm_str = string.format("%.0f", bpm)
+  end
+  local time_str = "?/?"
+  if time_sig_num then
+    time_str = string.format("%d/%d", time_sig_num, time_sig_denom)
   end
 
-  local cps_line = string.format("  CPS: %s", cps_str)
-  cps_line = cps_line .. string.rep(" ", content_width - #cps_line)
-
-  local tap_count_str = string.format("%d/%d", math.min(#taps, config.options.taptempo.max_taps), config.options.taptempo.max_taps)
-  local counter_line = string.format("  taps: %s", tap_count_str)
-  local close_hint = "  [q]  "
-  counter_line = counter_line .. string.rep(" ", content_width - #counter_line - #close_hint) .. close_hint
-
-  local anim_width = p_opts.anim_width
-  local anim_height = p_opts.anim_height
-  local left_pad = math.floor((content_width - anim_width) / 2)
-
-  local anim_lines = {}
-  for _ = 1, anim_height do
-    local row_chars = {}
-    for _ = 1, content_width do
-      table.insert(row_chars, " ")
+  local function centered(lines)
+    local out = {}
+    local width = 0
+    for _, l in ipairs(lines) do
+      if #l > width then
+        width = #l
+      end
     end
-    table.insert(anim_lines, row_chars)
+    local pad_total = content_width - width
+    local left = math.floor(pad_total / 2)
+    local right = pad_total - left
+    if left < 0 then
+      left = 0
+    end
+    if right < 0 then
+      right = 0
+    end
+    local lp = string.rep(" ", left)
+    local rp = string.rep(" ", right)
+    for _, l in ipairs(lines) do
+      table.insert(out, lp .. l .. rp)
+    end
+    return out
   end
+
+  local bpm_digit_lines = big_lines(bpm_str == "--" and "---" or bpm_str)
+  local time_digit_lines = big_lines(time_str == "?/?" and "---" or time_str)
+
+  local rows = {}
+
+  local label_bpm = " BPM " .. string.rep(" ", 0)
+  table.insert(rows, label_bpm .. string.rep(" ", content_width - #label_bpm))
+  for _, l in ipairs(centered(bpm_digit_lines)) do
+    table.insert(rows, l)
+  end
+
+  table.insert(rows, string.rep(" ", content_width))
+
+  local label_time = " TIME "
+  table.insert(rows, label_time .. string.rep(" ", content_width - #label_time))
+  for _, l in ipairs(centered(time_digit_lines)) do
+    table.insert(rows, l)
+  end
+
+  table.insert(rows, string.rep(" ", content_width))
 
   local elapsed = last_tap_time and (vim.uv.now() - last_tap_time) or (p_opts.flash_ms + 1)
-
-  if elapsed <= p_opts.flash_ms then
+  local ripple = string.rep(" ", content_width)
+  if elapsed <= p_opts.flash_ms and not bpm then
+    local anim_width = p_opts.anim_width
     local progress = elapsed / p_opts.flash_ms
     local head_col = math.floor(progress * anim_width)
-
-    for row = 0, anim_height - 1 do
-      local chars = anim_lines[row + 1]
-      for c = 0, anim_width - 1 do
-        if c < head_col then
-          local dist = head_col - c
-          local char = "█"
-          if dist <= 2 then
-            chars[left_pad + c + 1] = char
-          elseif dist <= 5 then
-            chars[left_pad + c + 1] = char
-          else
-            chars[left_pad + c + 1] = char
-          end
-        end
-      end
+    local left_pad = math.floor((content_width - anim_width) / 2)
+    local chars = {}
+    for _ = 1, content_width do
+      table.insert(chars, " ")
     end
+    for c = 0, head_col - 1 do
+      chars[left_pad + c + 1] = "█"
+    end
+    ripple = table.concat(chars)
   end
+  table.insert(rows, ripple)
 
-  local lines = {
-    cps_line,
-    string.rep(" ", content_width),
-  }
-  for _, row_chars in ipairs(anim_lines) do
-    table.insert(lines, table.concat(row_chars))
-  end
-  table.insert(lines, string.rep(" ", content_width))
-  table.insert(lines, counter_line)
+  local tap_count_str = string.format("%d", math.min(#taps, config.options.taptempo.max_taps))
+  local counter_line = string.format("  taps: %s", tap_count_str)
+  counter_line = counter_line .. string.rep(" ", content_width - #counter_line)
+  table.insert(rows, counter_line)
 
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, rows)
   vim.api.nvim_buf_clear_namespace(buf, tap_ns, 0, -1)
 
-  if elapsed <= p_opts.flash_ms then
-    local progress = elapsed / p_opts.flash_ms
-    local head_col = math.floor(progress * anim_width)
-
-    for row = 0, anim_height - 1 do
-      local line_idx = row + 2
-      for c = 0, anim_width - 1 do
-        if c < head_col then
-          local dist = head_col - c
-          local hl_name
-          if dist <= 2 then
-            hl_name = "TidalRippleTapHead"
-          elseif dist <= 5 then
-            hl_name = "TidalRippleTapMid"
-          else
-            hl_name = "TidalRippleTapTail"
-          end
-          local byte_pos = left_pad + c
-          vim.api.nvim_buf_add_highlight(buf, tap_ns, hl_name, line_idx, byte_pos, byte_pos + 1)
-        end
-      end
+  if bpm then
+    for r = 1, 5 do
+      vim.api.nvim_buf_add_highlight(buf, tap_ns, "TidalRippleTapHead", r, 0, content_width)
     end
   end
-
-  if display_cps then
-    vim.api.nvim_buf_add_highlight(buf, tap_ns, "TidalRippleTapHead", 0, 2, 2 + #cps_str + 6)
+  if time_sig_num then
+    for r = 1, 5 do
+      vim.api.nvim_buf_add_highlight(buf, tap_ns, "TidalRippleTapHead", 7 + r, 0, content_width)
+    end
   end
 end
 
@@ -312,8 +389,13 @@ function activate()
   end
   active = true
   taps = {}
+  subbeats = 0
   display_cps = nil
   last_tap_time = nil
+  time_sig_num = nil
+  time_sig_denom = nil
+  bpm = nil
+  cps_sent = false
   setup_namespace()
   create_window()
   if not win then
@@ -321,9 +403,9 @@ function activate()
     return
   end
   start_timer()
-  callback_id = vim.on_key(on_key)
-  vim.keymap.set("n", "<CR>", record_tap, { desc = "Tap tempo tap" })
-  vim.keymap.set("i", "<CR>", record_tap, { desc = "Tap tempo tap" })
+  target_buf = vim.api.nvim_get_current_buf()
+  vim.keymap.set("n", "n", record_tap, { buffer = target_buf, desc = "Tap tempo downbeat" })
+  vim.keymap.set("n", "m", record_subtap, { buffer = target_buf, desc = "Tap tempo subbeat" })
   redraw()
 end
 
@@ -333,23 +415,36 @@ function M.deactivate()
   end
   active = false
   send_cps(display_cps)
-  if callback_id then
-    pcall(vim.on_key, nil, callback_id)
-    callback_id = nil
+  local tgt = target_buf
+  target_buf = nil
+  if tgt and vim.api.nvim_buf_is_valid(tgt) then
+    pcall(vim.keymap.del, "n", "n", { buffer = tgt })
+    pcall(vim.keymap.del, "n", "m", { buffer = tgt })
   end
-  pcall(vim.keymap.del, "n", "<CR>")
-  pcall(vim.keymap.del, "i", "<CR>")
   stop_timer()
   close_window()
+  if tgt and vim.api.nvim_buf_is_valid(tgt) then
+    pcall(vim.api.nvim_set_current_buf, tgt)
+  end
   taps = {}
+  subbeats = 0
   display_cps = nil
   last_tap_time = nil
+  time_sig_num = nil
+  time_sig_denom = nil
+  bpm = nil
+  cps_sent = false
 end
 
 function M.reset()
   taps = {}
+  subbeats = 0
   display_cps = nil
   last_tap_time = nil
+  time_sig_num = nil
+  time_sig_denom = nil
+  bpm = nil
+  cps_sent = false
   redraw()
 end
 
@@ -367,6 +462,17 @@ end
 
 function M.get_popup_height()
   return popup_opts().height
+end
+
+function M.get_time_sig()
+  if time_sig_num then
+    return { numerator = time_sig_num, denominator = time_sig_denom }
+  end
+  return nil
+end
+
+function M.get_bpm()
+  return bpm
 end
 
 return M

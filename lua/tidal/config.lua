@@ -102,13 +102,14 @@ local defaults = {
     source_name = "tidal",
   },
   taptempo = {
-    min_taps = 4,
+    min_taps = 2,
     max_taps = 16,
     outlier_threshold = 0.3,
     exit_factor = 3.0,
+    idle_ms = 1000,
     popup = {
-      width = 30,
-      height = 8,
+      width = 22,
+      height = 16,
       border = "single",
       flash_ms = 150,
       refresh_ms = 50,

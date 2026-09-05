@@ -72,10 +72,6 @@ local function create_window()
   buf = vim.api.nvim_create_buf(false, true)
 
   local row = ui.height - height - 1
-  local taptempo = require("tidal.core.taptempo")
-  if taptempo.is_active() then
-    row = row - taptempo.get_popup_height() - 1
-  end
 
   win = vim.api.nvim_open_win(buf, false, {
     relative = "editor",
@@ -107,6 +103,24 @@ local function stop_timer()
   end
 end
 
+function M.get_window()
+  return win
+end
+
+function M.reposition()
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+  local ui = vim.api.nvim_list_uis()[1]
+  if not ui then
+    return
+  end
+  local width = math.min(get_opts().width, ui.width - 4)
+  local row = ui.height - vim.api.nvim_win_get_height(win) - 1
+  local col = ui.width - width - 2
+  vim.api.nvim_win_set_config(win, { relative = "editor", row = math.max(row, 0), col = col })
+end
+
 function M.open()
   if state.visualizer_open then
     return
@@ -119,6 +133,8 @@ function M.open()
   state.visualizer_open = true
   start_timer()
   M.redraw()
+  local taptempo = require("tidal.core.taptempo")
+  pcall(taptempo.reposition)
 end
 
 function M.close()
@@ -136,6 +152,8 @@ function M.close()
   sound_colors = {}
   next_color = 1
   frame_count = 0
+  local taptempo = require("tidal.core.taptempo")
+  pcall(taptempo.reposition)
 end
 
 function M.toggle()

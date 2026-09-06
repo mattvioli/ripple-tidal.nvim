@@ -33,6 +33,7 @@
 - [ ] **OSC target config ↔ boot file sync** — `boot.tidal.osc_target` docs the port but doesn't rewrite `BootTidal.hs`.
 - [ ] **Pattern undo/history** — snapshot pattern state per send for recall (vim undotree partially covers this).
 - [ ] **`:checkhealth tidal`** — verify JACK, GHCi, sclang, OSC connectivity.
+- [ ] **Auto-add to sample bank** — automatically detect and add new samples to the sample bank data.
 
 ## Notes
 

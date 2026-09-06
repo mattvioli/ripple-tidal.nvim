@@ -30,7 +30,7 @@ local function should_autocomplete(ctx)
     return (ctx.prefix or "") ~= ""
   end
   if ctx.type == "keyword" then
-    return (ctx.prefix or ""):len() >= 2
+    return (ctx.prefix or ""):len() >= 1
   end
   return false
 end

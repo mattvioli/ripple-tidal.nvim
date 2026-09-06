@@ -413,6 +413,7 @@ function M.get_completions(ctx)
     add(data.top_level, "cmd")
     add(data.oscillators, "osc")
     add(data.orbit_aliases, "orbit")
+    add(data.control_params, "param")
 
     for _, s in ipairs(symbols.get_all_symbols()) do
       if not seen[s.word] and (not prefix or s.word:lower():find(prefix, 1, true) == 1) then

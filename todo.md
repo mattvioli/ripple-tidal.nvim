@@ -17,7 +17,7 @@ None — all three audited gaps are fixed.
 
 ## Data Gaps
 
-- [ ] **Sample bank file listings** — ~180 banks described but only ~18 have file data. Re-run `scripts/update_sample_data.lua` (requires `curl` + `jq`).
+- [x] **Sample bank file listings** — regenerated via git trees API (single request, no rate limiting): all 218 banks now have file listings, 2,038 files total (was 18 banks/203 files). Improved description parser for `:N` suffixes and direct `d1 "bank"` form.
 
 ## Cleanup (nice-to-have)
 

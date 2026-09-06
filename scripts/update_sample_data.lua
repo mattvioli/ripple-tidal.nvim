@@ -1,10 +1,11 @@
 #!/usr/bin/env lua
 -- Script to regenerate lua/tidal/data/sample_banks.lua
--- Fetches bank names and file listings from tidalcycles/Dirt-Samples GitHub repo
--- and parses descriptions from allthesamples.tidal
+-- Fetches the full Dirt-Samples file tree via the git trees API (single
+-- request, no per-bank rate limiting) and parses descriptions from
+-- allthesamples.tidal
 --
 -- Usage: lua scripts/update_sample_data.lua
--- Requires: curl, jq
+-- Requires: curl
 
 local function trim(s)
   return (s:gsub("^%s+", ""):gsub("%s+$", ""))
@@ -17,89 +18,57 @@ local function shell(cmd)
   return result
 end
 
--- Fetch bank directories from Dirt-Samples
-print("Fetching bank list from Dirt-Samples...")
-local banks_json = shell("curl -s https://api.github.com/repos/tidalcycles/Dirt-Samples/contents/")
-local bank_names = {}
-for name in banks_json:gmatch('"name"%s*:%s*"([^"]+)"') do
-  bank_names[name] = true
-end
-
 -- Fetch allthesamples.tidal for descriptions
 print("Fetching descriptions from allthesamples.tidal...")
 local allsamples = shell("curl -s https://raw.githubusercontent.com/tedthetrumpet/tidal/master/allthesamples.tidal")
 
 -- Parse descriptions: extract s "bankname" and trailing comments
 local descriptions = {}
-for line in allsamples:gmatch("[^\r\n]+") do
-  if line:match('$ s "') then
-    local bank = line:match('$ s "([^"]+)"')
-    local desc = line:match("%-%-%s*(.+)$")
-    if bank and desc then
-      -- Handle bank!N format (e.g., "909!4")
-      bank = bank:gsub("!.*$", "")
-      descriptions[bank] = trim(desc)
+local function record(banks, desc)
+  if not banks or not desc then
+    return
+  end
+  -- A line may reference several banks at once (e.g. s "alex:1 alex:2");
+  -- map each token to its base bank, stripping !N and :N suffixes.
+  for token in banks:gmatch("%S+") do
+    local base = token:gsub("[!:]%d+.*$", "")
+    if not descriptions[base] then
+      descriptions[base] = trim(desc)
     end
   end
 end
-
--- Also parse lines with d1 $ s "bank" (without the $ before s)
 for line in allsamples:gmatch("[^\r\n]+") do
-  local bank, desc
-  if line:match('^d%d+ $ s "') or line:match('^d%d+ .- $ s "') then
-    bank = line:match('$ s "([^"]+)"')
-    desc = line:match("%-%-%s*(.+)$")
-  end
-  -- Also direct form: d1 "noise" -- desc
-  if not bank then
-    bank = line:match('^d%d+%s+"([^"]+)"')
-    desc = line:match("%-%-%s*(.+)$")
-  end
-  if bank and desc then
-    bank = bank:gsub("!.*$", "")
-    if not descriptions[bank] then
-      descriptions[bank] = trim(desc)
-    end
+  if not line:match("^%s*%-%-") then
+    record(line:match('s%s+"([^"]+)"'), line:match("%-%-%s*(.+)$"))
+    -- Also the direct form: d1 "bank" -- desc
+    record(line:match('^d%d+%s+"([^"]+)"'), line:match("%-%-%s*(.+)$"))
   end
 end
 
--- Fetch file listings for each bank
-print("Fetching file listings for each bank...")
+-- Fetch full file tree from Dirt-Samples
+print("Fetching Dirt-Samples tree...")
+local tree_json = shell("curl -s --connect-timeout 10 https://api.github.com/repos/tidalcycles/Dirt-Samples/git/trees/main?recursive=1")
+
 local bank_files = {}
-local count = 0
-local total = 0
-for name, _ in pairs(bank_names) do
-  total = total + 1
-end
-
-for name, _ in pairs(bank_names) do
-  count = count + 1
-  io.write(string.format("\r[%d/%d] %-30s", count, total, name))
-  io.flush()
-
-  local files_json = shell(string.format(
-    'curl -s --connect-timeout 5 "https://api.github.com/repos/tidalcycles/Dirt-Samples/contents/%s"',
-    name
-  ))
-
-  local files = {}
-  for fname in files_json:gmatch('"name"%s*:%s*"([^"]+)"') do
-    if fname:match("%.wav$") or fname:match("%.WAV$") or fname:match("%.aif$") or fname:match("%.aiff$") then
-      table.insert(files, fname)
+local bank_names = {}
+for path in tree_json:gmatch('"path"%s*:%s*"([^"]+)"') do
+  local bank, fname = path:match("^([^/]+)/([^/]+)$")
+  if bank and fname then
+    bank_names[bank] = true
+    if fname:match("%.wav$") or fname:match("%.WAV$") or fname:match("%.aif$") or fname:match("%.aiff$") or fname:match("%.AIFF$") then
+      if not bank_files[bank] then
+        bank_files[bank] = {}
+      end
+      table.insert(bank_files[bank], fname)
     end
   end
-
-  if #files > 0 then
-    table.sort(files)
-    bank_files[name] = files
-  end
-
-  -- Small delay to avoid rate limiting
-  if count % 10 == 0 then
-    os.execute("sleep 1")
-  end
 end
-print("\nDone fetching files.")
+local bank_count = 0
+for _ in pairs(bank_names) do
+  bank_count = bank_count + 1
+end
+print("Fetched Dirt-Samples tree: " .. bank_count .. " banks, " .. tree_json:len() .. " bytes of tree data.")
+print("Done fetching files.")
 
 -- Generate output
 print("Generating sample_banks.lua...")
@@ -123,6 +92,7 @@ table.sort(sorted_names)
 for _, name in ipairs(sorted_names) do
   local desc = descriptions[name] or ""
   local files = bank_files[name] or {}
+  table.sort(files)
   local files_str
   if #files > 0 then
     local parts = {}

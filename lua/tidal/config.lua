@@ -64,6 +64,7 @@ local defaults = {
   osc = {
     port = 5050,
     enabled = true,
+    debug = false, -- log every /dirt/play message at DEBUG level
   },
   playhead = {
     enabled = true,

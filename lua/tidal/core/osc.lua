@@ -45,11 +45,13 @@ local function dispatch(msg)
     return
   end
 
-  vim.schedule(function()
-    vim.notify(string.format("OSC /dirt/play: sound=%s n=%s cycle=%s cps=%s orbit=%s delta=%s",
-      vim.inspect(parsed.sound), vim.inspect(parsed.n), vim.inspect(parsed.cycle),
-      vim.inspect(parsed.cps), vim.inspect(parsed.orbit), vim.inspect(parsed.delta)), vim.log.levels.DEBUG)
-  end)
+  if config.options.osc.debug then
+    vim.schedule(function()
+      vim.notify(string.format("OSC /dirt/play: sound=%s n=%s cycle=%s cps=%s orbit=%s delta=%s",
+        vim.inspect(parsed.sound), vim.inspect(parsed.n), vim.inspect(parsed.cycle),
+        vim.inspect(parsed.cps), vim.inspect(parsed.orbit), vim.inspect(parsed.delta)), vim.log.levels.DEBUG)
+    end)
+  end
 
   state.current_cps = parsed.cps
   state.current_cycle = parsed.cycle

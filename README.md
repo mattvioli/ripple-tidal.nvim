@@ -16,6 +16,9 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 - Haskell syntax highlighting for `.tidal` files; keymaps for `.scd` (SuperCollider) buffers
 - Flash-on-send highlight
 - Playhead sign markers (`▶`) on sent lines, flashing in time with OSC cycle feedback
+- Event highlighting — the lines actively producing sound flash in sync with audio, driven by `/dirt/play` timing
+- Bidirectional OSC — playback control (`mute`/`solo`/`hush`) and `/ctrl` controller values sent to Tidal on port 6010
+- MIDI controller support — `/ctrl` messages (from a hardware→OSC bridge) are received, stored, and exposed to scripts (`api.ctrl_get`, `:TidalCtrlList`)
 - Statusline component showing live CPS / BPM / cycle / time signature
 - Floating-window beat grid visualizer, per-orbit, with configurable colors (toggle with `:TidalVisualizerToggle` or `<leader>v`)
 - Tap tempo with BPM + time-signature inference (toggle with `:TidalTapTempo` or `<leader>t`)
@@ -108,15 +111,27 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     looper_persist    = { mode = "n", key = "<leader>lp" },
     toggle_sample_browser = { mode = "n", key = "<leader>a" },
     investigate_sample    = { mode = "n", key = "<leader>i" },
+    osc_mute              = { mode = "n", key = "<leader>m" },  -- mute via OSC (count = orbit, default all)
+    osc_unmute            = { mode = "n", key = "<leader>u" },  -- unmute via OSC (count = orbit, default all)
+    osc_solo              = { mode = "n", key = "<leader>s" },  -- solo via OSC (count = orbit, default all)
+    osc_unsolo            = { mode = "n", key = "<leader>S" },  -- unsolo via OSC (count = orbit, default all)
+    osc_hush              = { mode = "n", key = "<leader>h" },  -- hush via OSC
   },
   selection_highlight = {
     highlight = { link = "IncSearch" },
     timeout = 150,
   },
   osc = {
-    port = 5050,      -- must match boot.tidal.osc_target.port
+    port = 5050,      -- must match boot.tidal.osc_target.port (listener)
+    tidal_port = 6010, -- Tidal's OSC control input (playback control + /ctrl)
     enabled = true,   -- start the OSC listener after launch
     debug = false,    -- log every /dirt/play message at DEBUG level
+    ctrl_debug = false, -- log every /ctrl message at INFO level
+  },
+  event_highlight = {
+    enabled = true,   -- flash the live pattern lines with audio timing
+    highlight = { link = "TidalRippleEvent" },
+    fade_ms = 400,     -- base flash duration (delta of the event wins when present)
   },
   playhead = {
     enabled = true,
@@ -199,6 +214,11 @@ rebound or removed via `mappings.<name> = nil`.
 | `<leader>lF`  | n         | Looper: free all buffers                       |
 | `<leader>lm`  | n         | Looper: cycle mode replace ↔ overdub           |
 | `<leader>lp`  | n         | Looper: persist loops to disk                  |
+| `<leader>m`   | n         | Mute via OSC (count prefix = orbit, default all) |
+| `<leader>u`   | n         | Unmute via OSC (count prefix = orbit, default all) |
+| `<leader>s`   | n         | Solo via OSC (count prefix = orbit, default all)   |
+| `<leader>S`   | n         | Unsolo via OSC (count prefix = orbit, default all) |
+| `<leader>h`   | n         | Hush via OSC                                     |
 
 ## Commands
 
@@ -222,6 +242,13 @@ rebound or removed via `mappings.<name> = nil`.
 | `:TidalLooperPersist {name}`          | Persist loops to disk                                    |
 | `:TidalLooperMode {replace\|overdub}` | Set looper mode                                          |
 | `:TidalLooperInput {port}`            | Set looper input port                                    |
+| `:TidalMute {n\|name}`                | Mute all / orbit n / named pattern via OSC              |
+| `:TidalUnmute {n\|name}`              | Unmute all / orbit n / named pattern via OSC            |
+| `:TidalSolo {n\|name}`                | Solo orbit n / named pattern via OSC (all silent first) |
+| `:TidalUnsolo {n\|name}`              | Unsolo orbit n / named pattern via OSC                  |
+| `:TidalCtrlSend {key} {value}`        | Send a `/ctrl` value to Tidal (e.g. `amp 0.4`)          |
+| `:TidalCtrlList`                      | List received `/ctrl` values                            |
+| `:TidalCtrlClear`                     | Clear received `/ctrl` values                           |
 
 ## Usage
 
@@ -358,6 +385,32 @@ Tidal stream on your usual SuperDirt target *plus* a second OSC target
 - Customize with `boot.tidal.file` / `boot.sclang.file`.
 - The plugin also searches the project directory for `BootTidal.hs` as a fallback.
 - Boot evaluation is queued until the interpreter signals readiness, then flushed.
+
+## OSC playback control & MIDI controllers
+
+Tidal listens for external OSC control on `127.0.0.1:6010` (enabled by `defaultConfig`).
+The plugin talks to this port directly — no SuperCollider bridge needed:
+
+- **Mute / solo scenes** — `<leader>m`/`u`/`s`/`S` (or `:TidalMute 3` etc.) send `/mute`,
+  `/unmute`, `/solo`, `/unsolo`. With no count prefix they act on all patterns via
+  `/muteAll`, `/unmuteAll`, `/unsoloAll`. `<leader>h` / `:TidalHush` sends `/hush`.
+  Named patterns work too: `:TidalMute "bass"`.
+- **`/ctrl` values (MIDI controllers)** — a hardware→OSC bridge (e.g. the SuperCollider
+  `MIDIFunc` example in the [playback controllers docs](https://tidalcycles.org/docs/configuration/MIDIOSC/osc/))
+  sends `/ctrl` messages to Tidal; your patterns can read them with `cF`/`cI`/`cP`:
+  ```haskell
+  d1 $ s "bass" # gain (cF 1 "amp")
+  ```
+  If the bridge also mirrors `/ctrl` to the plugin's listener port (`osc.port`, default
+  5050), the values are stored and exposed to Neovim: `:TidalCtrlList` shows them,
+  `require('tidal.api').ctrl_get("amp")` reads them, and `api.ctrl_listen("amp", fn)`
+  subscribes to changes.
+- **Injecting values from Neovim** — `:TidalCtrlSend amp 0.4` (or `api.ctrl_send`) sends
+  `/ctrl` straight into Tidal, so you can modulate live patterns without touching
+  hardware.
+
+Event highlighting reuses the `/dirt/play` timing to flash the buffer lines that are
+currently producing sound, in time with the audio.
 
 ## Looper (TidalLooper)
 

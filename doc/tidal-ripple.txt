@@ -136,9 +136,18 @@ Default opts: >
       looper_persist    = { mode = "n", key = "<leader>lp" },
       toggle_sample_browser = { mode = "n", key = "<leader>a" },
       investigate_sample    = { mode = "n", key = "<leader>i" },
+      osc_mute              = { mode = "n", key = "<leader>m" },
+      osc_unmute            = { mode = "n", key = "<leader>u" },
+      osc_solo              = { mode = "n", key = "<leader>s" },
+      osc_unsolo            = { mode = "n", key = "<leader>S" },
+      osc_hush              = { mode = "n", key = "<leader>h" },
     },
     selection_highlight = { highlight = { link = "IncSearch" }, timeout = 150 },
-    osc = { port = 5050, enabled = true, debug = false },
+    osc = {
+      port = 5050, tidal_port = 6010, enabled = true, debug = false,
+      ctrl_debug = false,
+    },
+    event_highlight = { enabled = true, highlight = { link = "TidalRippleEvent" }, fade_ms = 400 },
     playhead = { enabled = true, highlight = { link = "TidalRipplePlayhead" } },
     statusline = { enabled = true, format = "[cps] CPS | c.{cycle}" },
     visualizer = {
@@ -181,6 +190,11 @@ removed via mappings.<name>.
   <leader>t       n        Toggle tap tempo
   <leader>a       n        Toggle the sample browser
   <leader>i       n        Investigate sample bank under cursor
+  <leader>m       n        Mute via OSC (count = orbit, default all)
+  <leader>u       n        Unmute via OSC (count = orbit, default all)
+  <leader>s       n        Solo via OSC (count = orbit, default all)
+  <leader>S       n        Unsolo via OSC (count = orbit, default all)
+  <leader>h       n        Hush via OSC
   <leader>lr      n        Looper: record (count = orbit)
   <leader>lo      n        Looper: overdub
   <leader>lf      n        Looper: free buffer (count = buffer)
@@ -209,6 +223,13 @@ removed via mappings.<name>.
   :TidalLooperPersist {name} Persist loops to disk
   :TidalLooperMode {..}      Set looper mode: replace|overdub
   :TidalLooperInput {port}   Set looper input port
+  :TidalMute {n|name}        Mute all / orbit n / named pattern via OSC
+  :TidalUnmute {n|name}      Unmute all / orbit n / named pattern via OSC
+  :TidalSolo {n|name}        Solo orbit n / named pattern via OSC (all silent first)
+  :TidalUnsolo {n|name}      Unsolo orbit n / named pattern via OSC
+  :TidalCtrlSend {key} {v}   Send a /ctrl value to Tidal (e.g. amp 0.4)
+  :TidalCtrlList             List received /ctrl values
+  :TidalCtrlClear            Clear received /ctrl values
 
 ==============================================================================
 7. USAGE                                              *tidal-ripple-usage*

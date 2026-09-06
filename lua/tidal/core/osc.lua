@@ -2,6 +2,7 @@ local config = require("tidal.config")
 local state = require("tidal.core.state")
 local notify = require("tidal.util.notify")
 local Packet = require("tidal.lib.losc.packet")
+local ctrl = require("tidal.core.ctrl")
 
 local M = {}
 
@@ -37,6 +38,11 @@ local function parse_dirt_play(msg)
 end
 
 local function dispatch(msg)
+  if msg.address == "/ctrl" then
+    ctrl.dispatch(msg)
+    return
+  end
+
   if msg.address ~= "/dirt/play" then
     return
   end
@@ -58,6 +64,10 @@ local function dispatch(msg)
 
   local playhead = require("tidal.core.playhead")
   playhead.on_cycle(parsed)
+
+  if config.options.event_highlight.enabled then
+    require("tidal.core.event_highlight").on_event(parsed)
+  end
 
   local viz_ok, viz = pcall(require, "tidal.core.visualizer")
   if viz_ok and viz.is_open() then
@@ -128,6 +138,9 @@ function M.stop()
   state.osc_running = false
   state.current_cps = nil
   state.current_cycle = nil
+
+  ctrl.reset()
+  require("tidal.core.event_highlight").stop()
 
   notify.info("OSC listener stopped")
 end

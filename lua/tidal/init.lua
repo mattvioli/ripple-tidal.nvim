@@ -30,6 +30,11 @@ local keymaps = {
   looper_persist = { callback = api.looper_persist, desc = "Persist loops to disk" },
   toggle_sample_browser = { callback = api.toggle_sample_browser, desc = "Toggle sample bank browser" },
   investigate_sample = { callback = api.investigate_sample, desc = "Investigate sample bank under cursor" },
+  osc_mute = { callback = api.osc_mute, desc = "Mute orbit via OSC (count = orbit, default all)" },
+  osc_unmute = { callback = api.osc_unmute, desc = "Unmute orbit via OSC (count = orbit, default all)" },
+  osc_solo = { callback = api.osc_solo, desc = "Solo orbit via OSC (count = orbit, default all muted)" },
+  osc_unsolo = { callback = api.osc_unsolo, desc = "Unsolo orbit via OSC (count = orbit, default all)" },
+  osc_hush = { callback = api.osc_hush, desc = "Hush via OSC" },
 }
 
 local function setup_user_commands()
@@ -67,6 +72,30 @@ local function setup_user_commands()
 
   vim.api.nvim_create_user_command("TidalSampleBrowser", api.toggle_sample_browser, { desc = "Toggle sample bank browser" })
   vim.api.nvim_create_user_command("TidalSampleInvestigate", api.investigate_sample, { desc = "Investigate sample bank under cursor" })
+
+  vim.api.nvim_create_user_command("TidalMute", function(opts)
+    api.osc_mute(opts.args ~= "" and opts.args or nil)
+  end, { nargs = "?", desc = "Mute orbit via OSC (arg = orbit/pattern name, default all)" })
+  vim.api.nvim_create_user_command("TidalUnmute", function(opts)
+    api.osc_unmute(opts.args ~= "" and opts.args or nil)
+  end, { nargs = "?", desc = "Unmute orbit via OSC (arg = orbit/pattern name, default all)" })
+  vim.api.nvim_create_user_command("TidalSolo", function(opts)
+    api.osc_solo(opts.args ~= "" and opts.args or nil)
+  end, { nargs = "?", desc = "Solo orbit via OSC (arg = orbit/pattern name, default all)" })
+  vim.api.nvim_create_user_command("TidalUnsolo", function(opts)
+    api.osc_unsolo(opts.args ~= "" and opts.args or nil)
+  end, { nargs = "?", desc = "Unsolo orbit via OSC (arg = orbit/pattern name, default all)" })
+  vim.api.nvim_create_user_command("TidalCtrlSend", function(opts)
+    local key, value = opts.args:match("^(%S+)%s+(%S+)$")
+    if key then
+      local v = tonumber(value) or value
+      api.ctrl_send(key, v)
+    else
+      notify.warn("Usage: TidalCtrlSend <key> <value>")
+    end
+  end, { nargs = "+", desc = "Send a /ctrl value to Tidal" })
+  vim.api.nvim_create_user_command("TidalCtrlList", api.ctrl_list, { desc = "List received /ctrl values" })
+  vim.api.nvim_create_user_command("TidalCtrlClear", api.ctrl_clear, { desc = "Clear received /ctrl values" })
 end
 
 local function setup_autocmds()

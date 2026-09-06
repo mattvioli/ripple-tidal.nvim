@@ -56,6 +56,11 @@ local defaults = {
     toggle_taptempo = { mode = "n", key = "<leader>t" },
     toggle_sample_browser = { mode = "n", key = "<leader>a" },
     investigate_sample = { mode = "n", key = "<leader>i" },
+    osc_mute = { mode = "n", key = "<leader>m" },
+    osc_unmute = { mode = "n", key = "<leader>u" },
+    osc_solo = { mode = "n", key = "<leader>s" },
+    osc_unsolo = { mode = "n", key = "<leader>S" },
+    osc_hush = { mode = "n", key = "<leader>h" },
   },
   selection_highlight = {
     highlight = { link = "IncSearch" },
@@ -63,8 +68,15 @@ local defaults = {
   },
   osc = {
     port = 5050,
+    tidal_port = 6010,
     enabled = true,
-    debug = false, -- log every /dirt/play message at DEBUG level
+    debug = false,
+    ctrl_debug = false,
+  },
+  event_highlight = {
+    enabled = true,
+    highlight = { link = "TidalRippleEvent" },
+    fade_ms = 400,
   },
   playhead = {
     enabled = true,
@@ -126,6 +138,7 @@ M.playhead_ns = vim.api.nvim_create_namespace("TidalRipplePlayhead")
 
 vim.api.nvim_set_hl(0, "TidalRipplePlayhead", { link = "CursorLine" })
 vim.api.nvim_set_hl(0, "TidalRippleFlash", { link = "Search" })
+vim.api.nvim_set_hl(0, "TidalRippleEvent", { link = "IncSearch" })
 
 function M.setup(options)
   M.options = vim.tbl_deep_extend("force", {}, defaults, options or {})

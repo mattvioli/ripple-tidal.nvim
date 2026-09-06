@@ -13,10 +13,13 @@ local function parse_orbit(text)
 end
 
 local function enqueue_playhead(start_pos, finish_pos, text)
+  local bufnr = vim.api.nvim_get_current_buf()
+  local orbit = text and parse_orbit(text)
   if config.options.playhead.enabled then
-    local bufnr = vim.api.nvim_get_current_buf()
-    local orbit = text and parse_orbit(text)
     require("tidal.core.playhead").enqueue(bufnr, finish_pos[1], finish_pos[1], orbit)
+  end
+  if config.options.event_highlight.enabled and orbit then
+    require("tidal.core.event_highlight").track(bufnr, finish_pos[1], orbit)
   end
 end
 
@@ -106,7 +109,9 @@ function M.exit_tidal()
   state.sclang_buf = nil
 
   require("tidal.core.osc").stop()
+  require("tidal.core.osc_out").stop()
   require("tidal.core.playhead").clear()
+  require("tidal.core.event_highlight").clear()
 end
 
 local function ft_to_repl()
@@ -127,11 +132,13 @@ end
 function M.send_silence()
   local orbit = vim.v.count
   require("tidal.core.playhead").clear(orbit)
+  require("tidal.core.event_highlight").clear(orbit)
   message.tidal.send_line(string.format("d%d silence", orbit))
 end
 
 function M.send_hush()
   require("tidal.core.playhead").clear()
+  require("tidal.core.event_highlight").clear()
   message.tidal.send_line("hush")
 end
 
@@ -229,6 +236,7 @@ end
 function M.stop_osc()
   require("tidal.core.osc").stop()
   require("tidal.core.playhead").clear()
+  require("tidal.core.event_highlight").clear()
 end
 
 function M.toggle_visualizer()
@@ -250,6 +258,116 @@ end
 
 function M.reset_taps()
   require("tidal.core.taptempo").reset()
+end
+
+-- OSC output (Tidal port 6010)
+
+local function normalize_pattern(arg)
+  if type(arg) == "string" then
+    local n = tonumber(arg)
+    if n then
+      return n
+    end
+  end
+  return arg
+end
+
+function M.osc_mute(pattern)
+  local osc_out = require("tidal.core.osc_out")
+  if pattern then
+    osc_out.mute(normalize_pattern(pattern))
+  else
+    local orbit = vim.v.count
+    if orbit > 0 then
+      osc_out.mute(orbit)
+    else
+      osc_out.mute()
+    end
+  end
+end
+
+function M.osc_unmute(pattern)
+  local osc_out = require("tidal.core.osc_out")
+  if pattern then
+    osc_out.unmute(normalize_pattern(pattern))
+  else
+    local orbit = vim.v.count
+    if orbit > 0 then
+      osc_out.unmute(orbit)
+    else
+      osc_out.unmute()
+    end
+  end
+end
+
+function M.osc_solo(pattern)
+  local osc_out = require("tidal.core.osc_out")
+  if pattern then
+    osc_out.solo(normalize_pattern(pattern))
+  else
+    local orbit = vim.v.count
+    if orbit > 0 then
+      osc_out.solo(orbit)
+    else
+      osc_out.solo()
+    end
+  end
+end
+
+function M.osc_unsolo(pattern)
+  local osc_out = require("tidal.core.osc_out")
+  if pattern then
+    osc_out.unsolo(normalize_pattern(pattern))
+  else
+    local orbit = vim.v.count
+    if orbit > 0 then
+      osc_out.unsolo(orbit)
+    else
+      osc_out.unsolo()
+    end
+  end
+end
+
+function M.osc_hush()
+  require("tidal.core.playhead").clear()
+  require("tidal.core.event_highlight").clear()
+  require("tidal.core.osc_out").hush()
+end
+
+-- MIDI controller (/ctrl) API
+
+function M.ctrl_get(key)
+  return require("tidal.core.ctrl").get(key)
+end
+
+function M.ctrl_get_all()
+  return require("tidal.core.ctrl").get_all()
+end
+
+function M.ctrl_listen(key, callback)
+  require("tidal.core.ctrl").on_change(key, callback)
+end
+
+function M.ctrl_send(key, value)
+  require("tidal.core.osc_out").send_ctrl(key, value)
+end
+
+function M.ctrl_list()
+  local values = require("tidal.core.ctrl").get_all()
+  local keys = vim.tbl_keys(values)
+  if #keys == 0 then
+    notify.info("No /ctrl values received yet")
+    return
+  end
+  table.sort(keys)
+  for _, k in ipairs(keys) do
+    print(string.format("%s = %s", k, tostring(values[k])))
+  end
+end
+
+function M.ctrl_clear()
+  require("tidal.core.ctrl").reset()
+  notify.info("Cleared /ctrl values")
 end
 
 -- Looper API

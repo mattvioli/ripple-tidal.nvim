@@ -15,12 +15,24 @@
 - [x] Blockwise (Ctrl-V) visual sends implemented
 - [x] OSC debug logging gated behind `osc.debug` (default off)
 - [x] `send_visual` aligned to function callback; redundant filetype set removed
+- [x] **OSC output to Tidal (port 6010)** — mute/solo/hush via OSC instead of code strings
+- [x] **`/ctrl` MIDI controller input** — receives hardware fader/encoder values as live signals
+- [x] **Event highlighting** — plays sent lines in sync with audio timing from OSC
 
 ## Remaining (nice-to-have)
 
 - [ ] **Repo-name consistency** — plugin is `tidal-ripple.nvim`, GitHub remote is `ripple-tidal.nvim`; consider renaming repo or README.
 - [ ] **Tests / CI** — no test infra exists yet.
 - [ ] **Looper end-to-end test** — `iterations.md` claims implemented but unverified.
+- [ ] **Pattern transition helpers** — editor-side shortcuts for `xfade`, `fadeIn`, `clutch`, `interpolate`, `jumpIn`. Wrap current block with `fadeIn 8 $` etc.
+- [ ] **Pattern presets/slots** — store/recall named pattern sets (Estuary JSoLangs / feedforward keystroke banks).
+- [ ] **`once` one-shot trigger** — keybind to run a riser/FX/sample once without persisting.
+- [ ] **`resetCycles`** — resync the Tidal cycle clock from the editor.
+- [ ] **Scene/group mute** — mute all orbits playing a particular sound bank, not just per-orbit.
+- [ ] **Tap-tempo idle auto-close** — `idle_ms` is configured but no timer is wired; popup stays open indefinitely.
+- [ ] **OSC target config ↔ boot file sync** — `boot.tidal.osc_target` docs the port but doesn't rewrite `BootTidal.hs`.
+- [ ] **Pattern undo/history** — snapshot pattern state per send for recall (vim undotree partially covers this).
+- [ ] **`:checkhealth tidal`** — verify JACK, GHCi, sclang, OSC connectivity.
 
 ## Notes
 

@@ -2,28 +2,35 @@
 
 Visually pleasing TidalCycles live coding for Neovim.
 
-Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enhanced visualization, terminal management, and auto-boot.
+Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enhanced visualization, terminal management, auto-boot, autocomplete, a sample browser, and TidalLooper integration.
 
 ## Features
 
 - Inline eval: send lines, visual selections, blocks, and TS nodes to TidalCycles
 - Auto-launch GHCi + SuperCollider on first send (opt-out)
+- Sends are queued until the REPL is ready, so boot races can't lose lines
+- A warning (once) if you try to send while no REPL is running
 - `:TidalToggle` — hide/show the GHCi terminal window
 - `:TidalHush` / `:TidalSilence {n}` — stop patterns
 - SuperCollider visual tools: `show_meter`, `show_scope`, `show_tree`
-- Haskell syntax highlighting for `.tidal` files
-- Keymaps also available in `.scd` (SuperCollider) buffers
+- Haskell syntax highlighting for `.tidal` files; keymaps for `.scd` (SuperCollider) buffers
 - Flash-on-send highlight
-- Playhead sign markers (`▶`) on sent lines
-- Statusline component showing live CPS / cycle info
-- OSC-based cycle visualization (toggle with `:TidalOSCToggle`)
-- Floating window beat grid visualizer (toggle with `:TidalVisualizerToggle` or `<leader>v`)
-- Tap tempo (toggle with `:TidalTapTempo` or `<leader>t`)
-- Sample bank browser — browsable Dirt-Samples banks with descriptions and file listings (`:TidalSampleBrowser` or `<leader>a`)
-- Context-aware autocomplete — Tidal pattern functions, control params, sample banks/indices, keywords, and user symbols
+- Playhead sign markers (`▶`) on sent lines, flashing in time with OSC cycle feedback
+- Statusline component showing live CPS / BPM / cycle / time signature
+- Floating-window beat grid visualizer, per-orbit, with configurable colors (toggle with `:TidalVisualizerToggle` or `<leader>v`)
+- Tap tempo with BPM + time-signature inference (toggle with `:TidalTapTempo` or `<leader>t`)
+- Sample bank browser — all 218 Dirt-Samples banks with descriptions and file listings (`:TidalSampleBrowser` or `<leader>a`)
+- Context-aware autocomplete — pattern functions, control params, sample banks/indices, keywords, and user symbols (nvim-cmp source or omnifunc)
 - **TidalLooper integration** — live sampling via SuperDirt (default off, enable with `boot.looper.enabled = true`)
 - Bundled `Looper.scd` boot file for TidalLooper
-- All visualization features are opt-in — enable them via the toggle commands or keymaps
+
+## Prerequisites
+
+- A TidalCycles install: `ghci` with the Tidal library (`stack`/`cabal`/`ghcup`, see [tidalcycles.org](https://tidalcycles.org))
+- SuperCollider with the SuperDirt quark
+- JACK (optional but recommended) — the plugin can auto-detect your soundcard and spawn `jackd`
+- `nvim-treesitter` (haskell parser) for best autocomplete, `nvim-cmp` for the cmp backend
+- Neovim `>= 0.10`
 
 ## Installation
 
@@ -52,7 +59,7 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
       args = { "-v0" },
       file = vim.api.nvim_get_runtime_file("bootfiles/BootTidal.hs", false)[1],
       enabled = true,
-      osc_target = {
+      osc_target = {          -- second OSC target for visualization
         enabled = true,
         port = 5050,
         address = "127.0.0.1",
@@ -107,8 +114,8 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     timeout = 150,
   },
   osc = {
-    port = 5050,
-    enabled = true,
+    port = 5050,      -- must match boot.tidal.osc_target.port
+    enabled = true,   -- start the OSC listener after launch
   },
   playhead = {
     enabled = true,
@@ -124,7 +131,7 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     border = "single",
     refresh_interval_ms = 33,
     grid = {
-      divisions = 4,
+      divisions = 4,        -- beats per cycle
       total_cycles = 1,
       chars_per_beat = 8,
     },
@@ -142,14 +149,14 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
   auto_launch = true,
   completion = {
     enabled = true,
-    backend = "cmp",       -- "cmp" (nvim-cmp) or "omnifunc"
+    backend = "cmp",    -- "cmp" (nvim-cmp, default) or "omnifunc"
     source_name = "tidal",
   },
   taptempo = {
-    min_taps = 2,
+    min_taps = 2,          -- taps before BPM is sent (setcps)
     max_taps = 16,
-    outlier_threshold = 0.3,
-    exit_factor = 3.0,
+    outlier_threshold = 0.3, -- tap-interval outliers are discarded
+    exit_factor = 3.0,       -- a late tap 3x the median exits tap mode
     idle_ms = 1000,
     popup = {
       width = 22,
@@ -164,6 +171,34 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 }
 ```
 
+## Keymaps
+
+All keymaps are defined per-buffer (installed on `.tidal` and `.scd` buffers) and can be
+rebound or removed via `mappings.<name> = nil`.
+
+| Key           | Mode      | Action                                         |
+| ------------- | --------- | ---------------------------------------------- |
+| `<S-CR>`      | i, n      | Send current line to GHCi                      |
+| `<S-CR>`      | x         | Send visual selection                          |
+| `<M-CR>`      | i, n, x   | Send contiguous non-empty block                |
+| `<leader><CR>`| n         | Send tree-sitter node under cursor             |
+| `<leader>d`   | n         | Send `d{count} silence` (count prefix = orbit) |
+| `<leader><Esc>`| n        | Send `hush` (silence all patterns)             |
+| `<F1>`        | n, i, x   | SuperCollider `s.meter`                        |
+| `<F2>`        | n, i, x   | SuperCollider `s.scope`                        |
+| `<F3>`        | n, i, x   | SuperCollider `s.plotTree`                     |
+| `<leader>o`   | n         | Toggle the OSC listener                        |
+| `<leader>v`   | n         | Toggle the beat grid visualizer                |
+| `<leader>t`   | n         | Toggle tap tempo                               |
+| `<leader>a`   | n         | Toggle the sample browser                      |
+| `<leader>i`   | n         | Investigate sample bank under cursor           |
+| `<leader>lr`  | n         | Looper: record (count prefix = orbit)          |
+| `<leader>lo`  | n         | Looper: overdub                                |
+| `<leader>lf`  | n         | Looper: free buffer (count prefix = buffer)    |
+| `<leader>lF`  | n         | Looper: free all buffers                       |
+| `<leader>lm`  | n         | Looper: cycle mode replace ↔ overdub           |
+| `<leader>lp`  | n         | Looper: persist loops to disk                  |
+
 ## Commands
 
 | Command                               | Description                                              |
@@ -172,10 +207,10 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 | `:TidalQuit`                          | Stop all processes                                       |
 | `:TidalToggle`                        | Show/hide the GHCi terminal window                       |
 | `:TidalHush`                          | Silence all patterns                                     |
-| `:TidalSilence {n}`                   | Silence pattern d{n} (default: d0)                       |
+| `:TidalSilence {n}`                   | Silence pattern d{n} (default/`count` = orbit)           |
 | `:TidalOSCToggle`                     | Toggle OSC cycle listener                                |
 | `:TidalVisualizerToggle`              | Toggle beat grid visualizer floating window              |
-| `:TidalTapTempo`                      | Toggle tap tempo mode (press `<CR>` in rhythm)           |
+| `:TidalTapTempo`                      | Toggle tap tempo mode                                    |
 | `:TidalTapTempoReset`                 | Reset tap tempo history                                  |
 | `:TidalSampleBrowser`                 | Toggle sample bank browser                               |
 | `:TidalSampleInvestigate`             | Investigate sample bank under cursor                     |
@@ -184,29 +219,102 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 | `:TidalLooperFree {n}`                | Free loop buffer n                                       |
 | `:TidalLooperFreeAll`                 | Free all loop buffers                                    |
 | `:TidalLooperPersist {name}`          | Persist loops to disk                                    |
-| `:TidalLooperMode {replace\|overdub}` | Set looper mode                          |
-| `:TidalLooperInput {port}`            | Set looper input port                    |
+| `:TidalLooperMode {replace\|overdub}` | Set looper mode                                          |
+| `:TidalLooperInput {port}`            | Set looper input port                                    |
+
+## Usage
+
+Open a `.tidal` file, put a pattern on one line, and evaluate:
+
+- `<S-CR>` sends the line under the cursor — flash-on-send highlights it, and a `▶`
+  playhead marker is placed next to it. The marker flashes in time with the actual
+  audio via OSC `/dirt/play` feedback.
+- `<leader><Esc>` hush, `<leader>d` silence a single orbit.
+- `.scd` buffers route the same send keys to sclang instead.
+- With `auto_launch = true` (default), the first send boots GHCi and SuperCollider
+  automatically. GHCi and SC boot files are loaded with sends queued until each
+  interpreter is ready, so a slow boot never drops evaluation.
+
+## Visualizer
+
+A floating beat grid that tracks each orbit's events in real time. Open with
+`:TidalVisualizerToggle` or `<leader>v`; close with `q`/`<Esc>` or toggle again.
+
+- Events are fed by the OSC listener (`/dirt/play`), so it needs Tidal to be running
+  with the OSC target configured (`boot.tidal.osc_target`).
+- Each event gets a color from `visualizer.palette` (per sound); markers advance
+  across the grid as cycles tick.
+- Tunables: window `width`/`height`/`border`, `refresh_interval_ms`, grid
+  `divisions` (beats/cycle), `chars_per_beat`, and limits
+  `max_orbits`/`max_events_per_orbit`.
+
+The OSC listener on port 5050 also feeds the statusline and playhead flash. Toggle it
+independently with `:TidalOSCToggle` (`<leader>o`).
+
+## Statusline
+
+A live component showing CPS, cycle, BPM, and time signature. Add it to your statusline
+with:
+
+```lua
+-- lualine example
+require('lualine').setup {
+  sections = { lualine_x = { { function() return require('tidal.core.statusline').get_status() end } } },
+}
+
+-- built-in statusline example
+vim.o.statusline = "%!v:lua.require('tidal.core.statusline').get_status()"
+```
+
+The `statusline.format` option supports placeholders: `{cps}`, `{cycle}`, `{bpm}`,
+`{timesig}`. Values come from the OSC listener, so it shows live data while a pattern
+is running.
+
+## Tap tempo
+
+`:TidalTapTempo` or `<leader>t` opens a popup with big BPM and time-signature digits.
+While tap mode is active, in the target buffer:
+
+- `n` — tap the downbeat
+- `m` — tap a sub-beat (infers the time signature, e.g. 4/4, 3/4, 6/8)
+
+Once enough taps are in (`taptempo.min_taps`, default 2) the BPM is sent as `setcps`.
+Outlier intervals are discarded, and a late tap more than `taptempo.exit_factor` times
+the median interval exits tap mode. `:TidalTapTempoReset` clears the history. The
+inferred BPM / time signature also feeds the statusline.
 
 ## Sample browser
 
-Browse the Dirt-Samples banks shipped with SuperDirt. Open with `:TidalSampleBrowser` or `<leader>a`. Each bank shows its description and file count; press `<CR>` or `<leader>i` to drill into the file listing, `<BS>` to go back, `q`/`<Esc>` to close.
+Browse the Dirt-Samples banks shipped with SuperDirt — all 218 banks, each with its
+description and file listing. Open with `:TidalSampleBrowser` or `<leader>a`.
 
-Overriding descriptions: create `~/.config/nvim/tidal-ripple/sample_descriptions.lua` returning a table of `bank_name = "description"` pairs. This overrides the descriptions bundled in `lua/tidal/data/sample_banks.lua`.
+- `<CR>` / `<leader>i` — drill into the selected bank's file listing
+- `<BS>` — go back one level
+- `q` / `<Esc>` — close
 
-| Key          | Action                                              |
-| ------------ | --------------------------------------------------- |
-| `<leader>a`  | Toggle sample bank browser                          |
-| `<leader>i`  | Investigate sample bank under cursor / drill into    |
-| `<CR>`       | Drill into the selected bank's file listing         |
-| `<BS>`       | Go back one level                                   |
-| `q` / `<Esc>`| Close the browser                                   |
+`<leader>i` (or `:TidalSampleInvestigate`) also works from a `.tidal` buffer to look up
+the sample bank under the cursor.
+
+Overriding descriptions: create `~/.config/nvim/tidal-ripple/sample_descriptions.lua`
+returning a table of `bank_name = "description"` pairs, e.g.
+
+```lua
+return { bd = "my favourite kick", hh = "" }
+```
+
+This overrides (or blanks) the descriptions bundled in `lua/tidal/data/sample_banks.lua`.
+The bundled file is regenerated by `scripts/update_sample_data.lua` (requires `curl`).
 
 ## Autocomplete
 
 Context-aware autocomplete for Tidal patterns, enabled by default. Two backends:
 
-- **nvim-cmp** (default) — registers a `tidal` source (name configurable via `completion.source_name`). No source config needed if you use `lazy.nvim`; if you configure sources manually, add `{ name = "tidal" }`.
-- **omnifunc** fallback — used when nvim-cmp isn't available, or when `completion.backend = "omnifunc"`. Sets `omnifunc` on `.tidal` buffers and triggers automatically on `<C-x><C-o>` / a debounced popup while typing.
+- **nvim-cmp** (default) — registers a source named `tidal` (`completion.source_name`).
+  With lazy.nvim you don't need to configure sources; if you configure them manually,
+  add `{ name = "tidal" }`.
+- **omnifunc** — used when nvim-cmp isn't available, or when
+  `completion.backend = "omnifunc"`. Sets `omnifunc` on `.tidal` buffers and triggers
+  automatically via `<C-x><C-o>` / a debounced popup while typing.
 
 What it completes, based on cursor context:
 
@@ -217,17 +325,46 @@ What it completes, based on cursor context:
 - Tidal keywords, orbit aliases (`d0`–`d9`, `p`), oscillators
 - Your own symbols: `let x = ...`, `p "name"`, and bare assignments scanned from the buffer
 
-Best results with nvim-treesitter's haskell parser installed; without it the plugin falls back to a regex-based parser (a one-time notice is shown).
+Best results with nvim-treesitter's haskell parser installed; without it the plugin falls
+back to a regex-based parser (a one-time notice is shown).
+
+## Audio setup (JACK)
+
+On boot, the plugin parses `/proc/asound/cards`, and:
+
+- if there's a single card, it's used automatically;
+- if there are several, `vim.ui.select` prompts you to pick one;
+- then `jackd -d alsa -d hw:<card>` is spawned (with retries and `jack_wait`), unless
+  `boot.sclang.soundcard` is set to skip the prompt / detection.
+
+Useful options:
+
+| Option                    | Effect                                              |
+| ------------------------- | --------------------------------------------------- |
+| `boot.sclang.kill_jack`   | Stop any running jackd before starting a new one    |
+| `boot.sclang.soundcard`   | e.g. `"hw:0"` — skip detection/prompt entirely      |
+| `boot.sclang.pre_cmd`     | Shell command run before sclang starts              |
+
+If JACK isn't available, SuperCollider manages audio itself and a warning is shown.
 
 ## Boot file
 
-The plugin bundles `bootfiles/BootTidal.hs`, `bootfiles/BootSuperDirt.scd`, and `bootfiles/Looper.scd` (used when TidalLooper is enabled). To use a custom boot file, set `boot.tidal.file` or `boot.sclang.file` in your config. The plugin also searches the project directory for `BootTidal.hs` as a fallback.
+The plugin bundles `bootfiles/BootTidal.hs`, `bootfiles/BootSuperDirt.scd`, and
+`bootfiles/Looper.scd` (used when TidalLooper is enabled). `BootTidal.hs` starts the
+Tidal stream on your usual SuperDirt target *plus* a second OSC target
+(`127.0.0.1:5050`) that feeds the visualizer/statusline/playhead.
+
+- Customize with `boot.tidal.file` / `boot.sclang.file`.
+- The plugin also searches the project directory for `BootTidal.hs` as a fallback.
+- Boot evaluation is queued until the interpreter signals readiness, then flushed.
 
 ## Looper (TidalLooper)
 
-The plugin integrates [thgrund/tidal-looper](https://github.com/thgrund/tidal-looper) for live sampling via SuperDirt. Enable it with `boot.looper.enabled = true`.
+The plugin integrates [thgrund/tidal-looper](https://github.com/thgrund/tidal-looper)
+for live sampling via SuperDirt. Enable it with `boot.looper.enabled = true`.
 
-When enabled, the boot process starts SuperDirt with an explicit `~dirt` variable and loads the looper synths (`rlooper`, `olooper`, `slooper`, `freeLoops`, `persistLoops`).
+When enabled, the boot process starts SuperDirt with an explicit `~dirt` variable and
+loads the looper synths (`rlooper`, `olooper`, `slooper`, `freeLoops`, `persistLoops`).
 
 ### Basic usage
 

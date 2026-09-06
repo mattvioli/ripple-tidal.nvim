@@ -9,7 +9,7 @@ local Tidal = {}
 local keymaps = {
   send_line = { callback = api.send_line, desc = "Send current line to tidal" },
   send_visual = {
-    callback = [[<Esc><Cmd>lua require("tidal").api.send_visual()<CR>gv]],
+    callback = api.send_visual,
     desc = "Send current visual selection to tidal",
   },
   send_block = { callback = api.send_block, desc = "Send current block to tidal" },
@@ -76,7 +76,6 @@ local function setup_autocmds()
     group = "TidalRipple",
     pattern = { "*.tidal" },
     callback = function()
-      vim.api.nvim_set_option_value("filetype", "haskell", { buf = 0 })
       if config.options.auto_launch then
         api.ensure_launched()
       end

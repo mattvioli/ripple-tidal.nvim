@@ -34,7 +34,13 @@ function M.get_visual()
     }
   end
   if mode == "\x16" then
-    error("Blockwise visual selection not implemented", vim.log.levels.ERROR)
+    local start_line = range.start[1]
+    local finish_line = range.finish[1]
+    return {
+      lines = vim.api.nvim_buf_get_lines(0, start_line, finish_line + 1, false),
+      start = range.start,
+      finish = range.finish,
+    }
   end
 end
 

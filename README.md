@@ -27,6 +27,12 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 - **TidalLooper integration** — live sampling via SuperDirt (default off, enable with `boot.looper.enabled = true`)
 - Bundled `Looper.scd` boot file for TidalLooper
 
+## Documentation
+
+- [Tutorial](docs/tutorial.md) — hands-on guide to using the plugin
+- [Feature reference](docs/features.md) — detailed explanation of every feature
+- `:h tidal-ripple` — built-in help
+
 ## Prerequisites
 
 - A TidalCycles install: `ghci` with the Tidal library (`stack`/`cabal`/`ghcup`, see [tidalcycles.org](https://tidalcycles.org))

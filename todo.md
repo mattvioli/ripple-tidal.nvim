@@ -18,10 +18,10 @@
 - [x] **OSC output to Tidal (port 6010)** — mute/solo/hush via OSC instead of code strings
 - [x] **`/ctrl` MIDI controller input** — receives hardware fader/encoder values as live signals
 - [x] **Event highlighting** — plays sent lines in sync with audio timing from OSC
+- [x] **Repo-name consistency** — GitHub repo renamed to `mattvioli/tidal-ripple.nvim`, install refs updated
 
 ## Remaining (nice-to-have)
 
-- [ ] **Repo-name consistency** — plugin is `tidal-ripple.nvim`, GitHub remote is `ripple-tidal.nvim`; consider renaming repo or README.
 - [ ] **Tests / CI** — no test infra exists yet.
 - [ ] **Looper end-to-end test** — `iterations.md` claims implemented but unverified.
 - [ ] **Pattern transition helpers** — editor-side shortcuts for `xfade`, `fadeIn`, `clutch`, `interpolate`, `jumpIn`. Wrap current block with `fadeIn 8 $` etc.

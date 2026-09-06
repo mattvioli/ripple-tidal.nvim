@@ -41,7 +41,7 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 
 ```lua
 {
-  "mattvioli/ripple-tidal.nvim",
+  "mattvioli/tidal-ripple.nvim",
   opts = {
     -- See configuration section for defaults
   },

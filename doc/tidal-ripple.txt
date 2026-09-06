@@ -65,7 +65,7 @@ browser, and TidalLooper integration.
 
 lazy.nvim: >
   {
-    "mattvioli/ripple-tidal.nvim",
+    "mattvioli/tidal-ripple.nvim",
     opts = {},
     dependencies = {
       "nvim-treesitter/nvim-treesitter",

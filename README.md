@@ -6,7 +6,7 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 
 ## Features
 
-- Inline eval: send lines, visual selections, blocks, and TS nodes to TidalCycles
+- Inline eval: send lines, visual selections (incl. `Ctrl-V` blocks), blocks, and TS nodes to TidalCycles
 - Auto-launch GHCi + SuperCollider on first send (opt-out)
 - Sends are queued until the REPL is ready, so boot races can't lose lines
 - A warning (once) if you try to send while no REPL is running
@@ -116,6 +116,7 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
   osc = {
     port = 5050,      -- must match boot.tidal.osc_target.port
     enabled = true,   -- start the OSC listener after launch
+    debug = false,    -- log every /dirt/play message at DEBUG level
   },
   playhead = {
     enabled = true,
@@ -179,7 +180,7 @@ rebound or removed via `mappings.<name> = nil`.
 | Key           | Mode      | Action                                         |
 | ------------- | --------- | ---------------------------------------------- |
 | `<S-CR>`      | i, n      | Send current line to GHCi                      |
-| `<S-CR>`      | x         | Send visual selection                          |
+| `<S-CR>`      | x         | Send visual selection (incl. `Ctrl-V` block)            |
 | `<M-CR>`      | i, n, x   | Send contiguous non-empty block                |
 | `<leader><CR>`| n         | Send tree-sitter node under cursor             |
 | `<leader>d`   | n         | Send `d{count} silence` (count prefix = orbit) |
@@ -415,6 +416,8 @@ once $ s "persistLoops" # lname "loop"
 | `:TidalLooperInput {port}`            | Set looper input port                    |
 
 ## Related
+
+For the built-in help run `:h tidal-ripple`.
 
 - [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) — original fork base
 - [jbfits/cycles.nvim](https://github.com/jbfits/cycles.nvim) — SC visual tools

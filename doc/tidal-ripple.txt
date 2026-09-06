@@ -1,0 +1,390 @@
+*tidal-ripple.nvim*                    Visually pleasing TidalCycles live coding.
+
+==============================================================================
+CONTENTS                                            *tidal-ripple-contents*
+
+  1. Features.....................................|tidal-ripple-features|
+  2. Requirements.................................|tidal-ripple-requirements|
+  3. Installation.................................|tidal-ripple-installation|
+  4. Configuration................................|tidal-ripple-configuration|
+  5. Keymaps......................................|tidal-ripple-keymaps|
+  6. Commands.....................................|tidal-ripple-commands|
+  7. Usage........................................|tidal-ripple-usage|
+  8. Visualizer...................................|tidal-ripple-visualizer|
+  9. Statusline...................................|tidal-ripple-statusline|
+  10. Tap tempo...................................|tidal-ripple-taptempo|
+  11. Sample browser..............................|tidal-ripple-sample-browser|
+  12. Autocomplete................................|tidal-ripple-autocomplete|
+  13. Audio setup (JACK)..........................|tidal-ripple-audio|
+  14. Boot files..................................|tidal-ripple-boot|
+  15. TidalLooper integration.....................|tidal-ripple-looper|
+  16. Related projects............................|tidal-ripple-related|
+
+tidal-ripple.nvim is a fork of grddavies/tidal.nvim with enhanced
+visualization, terminal management, auto-boot, autocomplete, a sample
+browser, and TidalLooper integration.
+
+==============================================================================
+1. FEATURES                                          *tidal-ripple-features*
+
+  - Inline evaluation: lines, visual selections (incl. visual blocks),
+    contiguous blocks, and tree-sitter nodes are sent to TidalCycles.
+  - Auto-launch of GHCi + SuperCollider on first send (opt-out).
+  - Sends are queued until the REPL is ready, so boot races cannot lose
+    evaluation.
+  - A one-time warning if you try to send while no REPL is running.
+  - :TidalToggle - show/hide the GHCi terminal window.
+  - :TidalHush / :TidalSilence {n} - stop patterns.
+  - SuperCollider visual tools: show_meter, show_scope, show_tree.
+  - Haskell syntax highlighting for .tidal files; keymaps for .scd buffers.
+  - Flash-on-send highlight.
+  - Playhead sign markers (>) on sent lines, flashing in time with OSC
+    /dirt/play cycle feedback.
+  - Statusline component: live CPS / BPM / cycle / time signature.
+  - Floating-window beat grid visualizer, per-orbit, configurable colors.
+  - Tap tempo with BPM + time-signature inference.
+  - Sample bank browser: all 218 Dirt-Samples banks with descriptions and
+    file listings.
+  - Context-aware autocomplete (nvim-cmp source or omnifunc).
+  - TidalLooper integration for live sampling (default off).
+
+==============================================================================
+2. REQUIREMENTS                                     *tidal-ripple-requirements*
+
+  - TidalCycles: ghci with the Tidal library (stack/cabal/ghcup) - see
+    https://tidalcycles.org
+  - SuperCollider with the SuperDirt quark.
+  - JACK (optional, recommended) - the plugin can auto-detect your
+    soundcard and spawn jackd.
+  - nvim-treesitter (haskell parser) for best autocomplete, nvim-cmp for
+    the cmp backend.
+  - Neovim >= 0.10.
+
+==============================================================================
+3. INSTALLATION                                     *tidal-ripple-installation*
+
+lazy.nvim: >
+  {
+    "mattvioli/ripple-tidal.nvim",
+    opts = {},
+    dependencies = {
+      "nvim-treesitter/nvim-treesitter",
+      opts = { ensure_installed = { "haskell", "supercollider" } },
+    },
+  }
+<
+
+==============================================================================
+4. CONFIGURATION                                   *tidal-ripple-configuration*
+
+  boot.tidal ................. ghci command/args/file + second OSC target
+  boot.sclang ................ sclang options (kill_jack, soundcard, pre_cmd)
+  boot.looper ................ TidalLooper options (started disabled)
+  boot.split ................. 'h' or 'v' - how the REPL terminal splits
+  mappings ................... all keymaps (see |tidal-ripple-keymaps|)
+  selection_highlight ...... flash-on-send highlight group + timeout
+  osc ........................ OSC listener port/enabled/debug
+  playhead ................... playhead markers on/off + highlight
+  statusline ................. component on/off + format
+  visualizer ................. beat grid window, palette, grid settings
+  sample_browser ............ sample browser window proportions
+  auto_launch ................ boot REPLs on first send
+  completion ................. autocomplete backend/source
+  taptempo ................... taps, outlier threshold, popup sizing
+
+Default opts: >
+  {
+    boot = {
+      tidal = {
+        cmd = "ghci",
+        args = { "-v0" },
+        file = vim.api.nvim_get_runtime_file("bootfiles/BootTidal.hs", false)[1],
+        enabled = true,
+        osc_target = { enabled = true, port = 5050,
+                       address = "127.0.0.1", latency = 0.2 },
+      },
+      sclang = {
+        cmd = "sclang", args = {},
+        file = vim.api.nvim_get_runtime_file("bootfiles/BootSuperDirt.scd", false)[1],
+        enabled = true, kill_jack = true, soundcard = nil, pre_cmd = nil,
+      },
+      looper = {
+        enabled = false, num_buffers = 8, p_level = 0.0, r_level = 2.5,
+        default_input = 0, default_name = "loop",
+        persist_path = "~/Music/Loops/", debug_mode = false,
+      },
+      split = "h",
+    },
+    mappings = {
+      send_line   = { mode = { "i", "n" }, key = "<S-CR>" },
+      send_visual = { mode = { "x" },       key = "<S-CR>" },
+      send_block  = { mode = { "i", "n", "x" }, key = "<M-CR>" },
+      send_node   = { mode = "n",           key = "<leader><CR>" },
+      send_silence = { mode = "n",          key = "<leader>d" },
+      send_hush   = { mode = "n",           key = "<leader><Esc>" },
+      show_meter  = { mode = { "n", "i", "x" }, key = "<F1>" },
+      show_scope  = { mode = { "n", "i", "x" }, key = "<F2>" },
+      show_tree   = { mode = { "n", "i", "x" }, key = "<F3>" },
+      toggle_osc        = { mode = "n", key = "<leader>o" },
+      toggle_visualizer = { mode = "n", key = "<leader>v" },
+      toggle_taptempo   = { mode = "n", key = "<leader>t" },
+      looper_record     = { mode = "n", key = "<leader>lr" },
+      looper_overdub    = { mode = "n", key = "<leader>lo" },
+      looper_free       = { mode = "n", key = "<leader>lf" },
+      looper_free_all   = { mode = "n", key = "<leader>lF" },
+      looper_mode_cycle = { mode = "n", key = "<leader>lm" },
+      looper_persist    = { mode = "n", key = "<leader>lp" },
+      toggle_sample_browser = { mode = "n", key = "<leader>a" },
+      investigate_sample    = { mode = "n", key = "<leader>i" },
+    },
+    selection_highlight = { highlight = { link = "IncSearch" }, timeout = 150 },
+    osc = { port = 5050, enabled = true, debug = false },
+    playhead = { enabled = true, highlight = { link = "TidalRipplePlayhead" } },
+    statusline = { enabled = true, format = "[cps] CPS | c.{cycle}" },
+    visualizer = {
+      width = 60, height = 12, border = "single", refresh_interval_ms = 33,
+      grid = { divisions = 4, total_cycles = 1, chars_per_beat = 8 },
+      palette = { "#FF6B6B", "#51CF66", "#FFD43B", "#339AF0",
+                  "#CC5DE8", "#20C997", "#F06595", "#FF922B" },
+      max_orbits = 8, max_events_per_orbit = 4,
+    },
+    sample_browser = { width_ratio = 0.33, border = "single" },
+    auto_launch = true,
+    completion = { enabled = true, backend = "cmp", source_name = "tidal" },
+    taptempo = {
+      min_taps = 2, max_taps = 16, outlier_threshold = 0.3,
+      exit_factor = 3.0, idle_ms = 1000,
+      popup = { width = 22, height = 16, border = "single", flash_ms = 150,
+                refresh_ms = 50, anim_width = 12, anim_height = 3 },
+    },
+  }
+<
+
+==============================================================================
+5. KEYMAPS                                           *tidal-ripple-keymaps*
+
+All keymaps are per-buffer (on .tidal and .scd buffers) and can be bound or
+removed via mappings.<name>.
+
+  Key             Mode     Action
+  <S-CR>          i,n      Send current line to GHCi
+  <S-CR>          x        Send visual selection (incl. <C-v> block)
+  <M-CR>          i,n,x    Send contiguous non-empty block
+  <leader><CR>    n        Send tree-sitter node under cursor
+  <leader>d       n        Send d{count} silence (count = orbit)
+  <leader><Esc>   n        Send hush (silence all patterns)
+  <F1>            n,i,x    SuperCollider s.meter
+  <F2>            n,i,x    SuperCollider s.scope
+  <F3>            n,i,x    SuperCollider s.plotTree
+  <leader>o       n        Toggle the OSC listener
+  <leader>v       n        Toggle the beat grid visualizer
+  <leader>t       n        Toggle tap tempo
+  <leader>a       n        Toggle the sample browser
+  <leader>i       n        Investigate sample bank under cursor
+  <leader>lr      n        Looper: record (count = orbit)
+  <leader>lo      n        Looper: overdub
+  <leader>lf      n        Looper: free buffer (count = buffer)
+  <leader>lF      n        Looper: free all buffers
+  <leader>lm      n        Looper: cycle mode replace <-> overdub
+  <leader>lp      n        Looper: persist loops
+
+==============================================================================
+6. COMMANDS                                          *tidal-ripple-commands*
+
+  :TidalLaunch               Start GHCi + SuperCollider
+  :TidalQuit                 Stop all processes
+  :TidalToggle               Show/hide the GHCi terminal window
+  :TidalHush                 Silence all patterns
+  :TidalSilence {n}          Silence pattern d{n} (default/count = orbit)
+  :TidalOSCToggle            Toggle OSC cycle listener
+  :TidalVisualizerToggle     Toggle beat grid visualizer floating window
+  :TidalTapTempo             Toggle tap tempo mode
+  :TidalTapTempoReset        Reset tap tempo history
+  :TidalSampleBrowser        Toggle sample bank browser
+  :TidalSampleInvestigate    Investigate sample bank under cursor
+  :TidalLooperRecord         Record loop on current orbit
+  :TidalLooperOverdub        Overdub loop on current orbit
+  :TidalLooperFree {n}       Free loop buffer n
+  :TidalLooperFreeAll        Free all loop buffers
+  :TidalLooperPersist {name} Persist loops to disk
+  :TidalLooperMode {..}      Set looper mode: replace|overdub
+  :TidalLooperInput {port}   Set looper input port
+
+==============================================================================
+7. USAGE                                              *tidal-ripple-usage*
+
+Open a .tidal file, put a pattern on one line, and evaluate:
+
+  <S-CR> sends the line under the cursor - flash-on-send highlights it and a
+  playhead marker (>) is placed next to it. The marker flashes in time with
+  the actual audio via OSC /dirt/play feedback.
+
+  <leader><Esc> hushes; <leader>d silences a single orbit.
+
+  .scd buffers route the same send keys to sclang instead.
+
+  With auto_launch = true (default) the first send boots GHCi and
+  SuperCollider automatically. GHCi and SC boot files are loaded with sends
+  queued until each interpreter is ready, so a slow boot never drops
+  evaluation.
+
+==============================================================================
+8. VISUALIZER                                      *tidal-ripple-visualizer*
+
+A floating beat grid that tracks each orbit's events in real time. Open with
+:TidalVisualizerToggle or <leader>v; close with q/<Esc> or toggle again.
+
+  - Events are fed by the OSC listener (/dirt/play), so Tidal must be
+    running with the OSC target configured (boot.tidal.osc_target).
+  - Each event gets a color from visualizer.palette (per sound); markers
+    advance across the grid as cycles tick.
+  - Tunables: window width/height/border, refresh_interval_ms, grid
+    divisions (beats per cycle), chars_per_beat, and limits
+    max_orbits / max_events_per_orbit.
+
+The OSC listener on port 5050 also feeds the statusline and playhead flash.
+Toggle it independently with :TidalOSCToggle (<leader>o). Set osc.debug to
+log every /dirt/play message at DEBUG level.
+
+==============================================================================
+9. STATUSLINE                                      *tidal-ripple-statusline*
+
+A live component showing CPS, cycle, BPM, and time signature. Example: >
+
+  -- lualine
+  require('lualine').setup {
+    sections = { lualine_x = {
+      { function() return require('tidal.core.statusline').get_status() end },
+    } },
+  }
+
+  -- built-in statusline
+  vim.o.statusline = "%!v:lua.require('tidal.core.statusline').get_status()"
+<
+The statusline.format option supports these placeholders:
+  {cps}  {cycle}  {bpm}  {timesig}
+Values come from the OSC listener, so they show live data while a pattern is
+running.
+
+==============================================================================
+10. TAP TEMPO                                     *tidal-ripple-taptempo*
+
+:TidalTapTempo or <leader>t opens a popup with big BPM and time-signature
+digits. While tap mode is active, in the target buffer:
+
+  n        tap the downbeat
+  m        tap a sub-beat (infers the time signature, e.g. 4/4, 3/4, 6/8)
+
+Once taptempo.min_taps (default 2) are recorded, the BPM is sent as setcps.
+Outlier intervals are discarded and a late tap more than taptempo.exit_factor
+times the median interval exits tap mode. :TidalTapTempoReset clears the
+history. The inferred BPM / time signature also feed the statusline.
+
+==============================================================================
+11. SAMPLE BROWSER                              *tidal-ripple-sample-browser*
+
+Browse all 218 Dirt-Samples banks, each with its description and file
+listing. Open with :TidalSampleBrowser or <leader>a.
+
+  <CR>/<leader>i   drill into the selected bank's file listing
+  <BS>             go back one level
+  q/<Esc>          close
+
+<leader>i (or :TidalSampleInvestigate) also works from a .tidal buffer to
+look up the sample bank under the cursor.
+
+Override descriptions by creating
+~/.config/nvim/tidal-ripple/sample_descriptions.lua: >
+  return { bd = "my favourite kick", hh = "" }
+<
+These override (or blank) the descriptions bundled in
+lua/tidal/data/sample_banks.lua. Regenerate that file with
+scripts/update_sample_data.lua (requires curl).
+
+==============================================================================
+12. AUTOCOMPLETE                                 *tidal-ripple-autocomplete*
+
+Context-aware autocomplete for Tidal patterns, enabled by default.
+
+  nvim-cmp (default)
+    Registers a source named tidal (completion.source_name). With lazy.nvim
+    no source config is needed; if you configure sources manually, add
+    { name = "tidal" }.
+
+  omnifunc fallback
+    Used when nvim-cmp isn't available or completion.backend = "omnifunc".
+    Sets omnifunc on .tidal buffers and triggers via <C-x><C-o> / a debounced
+    popup while typing.
+
+Depending on the cursor context it completes:
+
+  - sample bank names inside s"..." (e.g. s" -> bd, cp, 808, ...)
+  - sample indices / letters inside n"..."
+  - control parameters after # (cps, pan, vowel, ...)
+  - pattern functions after $ (slow, rev, every, ...)
+  - Tidal keywords, orbit aliases (d0-d9, p), oscillators
+  - your own symbols: let x = ..., p "name", and bare assignments
+
+Best results with nvim-treesitter's haskell parser; without it a regex-based
+parser is used (a one-time notice is shown).
+
+==============================================================================
+13. AUDIO SETUP (JACK)                             *tidal-ripple-audio*
+
+On boot the plugin parses /proc/asound/cards and:
+
+  - uses a single card automatically;
+  - prompts via vim.ui.select when several cards exist;
+  - spawns jackd -d alsa -d hw:<card> (with retries and jack_wait), unless
+    boot.sclang.soundcard is set.
+
+  boot.sclang.kill_jack   stop any running jackd first
+  boot.sclang.soundcard   e.g. "hw:0" - skip detection/prompt
+  boot.sclang.pre_cmd     shell command run before sclang starts
+
+If JACK isn't available, SuperCollider manages audio itself and a warning is
+shown.
+
+==============================================================================
+14. BOOT FILES                                       *tidal-ripple-boot*
+
+The plugin bundles:
+
+  bootfiles/BootTidal.hs
+  bootfiles/BootSuperDirt.scd
+  bootfiles/Looper.scd    (only when TidalLooper is enabled)
+
+BootTidal.hs starts the Tidal stream on your SuperDirt target plus a second
+OSC target (127.0.0.1:5050) that feeds the visualizer/statusline/playhead.
+
+  - Customize with boot.tidal.file / boot.sclang.file.
+  - The plugin also searches the project directory for BootTidal.hs.
+  - Boot evaluation is queued until each interpreter signals readiness,
+    then flushed.
+
+==============================================================================
+15. TIDALLOOPER INTEGRATION                         *tidal-ripple-looper*
+
+Integrates thgrund/tidal-looper for live sampling via SuperDirt. Enable with
+boot.looper.enabled = true. The boot process then starts SuperDirt with an
+explicit ~dirt variable and loads the looper synths (rlooper, olooper,
+slooper, freeLoops, persistLoops).
+
+Basic patterns: >
+  d1 $ s "rlooper"                -- record one cycle to buffer 0, orbit 1
+  d1 $ s "olooper"                -- overdub
+  d1 $ s "loop"                   -- play back
+  once $ s "freeLoops"            -- free all buffers
+  once $ s "persistLoops" # lname "loop"   -- save to disk
+<
+See the looper keymaps and commands in |tidal-ripple-keymaps| and
+|tidal-ripple-commands|.
+
+==============================================================================
+16. RELATED PROJECTS                             *tidal-ripple-related*
+
+  - grddavies/tidal.nvim - original fork base
+  - jbfits/cycles.nvim - SC visual tools
+  - tidalcycles/vim-tidal - original Vim plugin
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

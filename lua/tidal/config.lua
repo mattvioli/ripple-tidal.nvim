@@ -124,6 +124,7 @@ M.namespace = vim.api.nvim_create_namespace("TidalRipple")
 M.playhead_ns = vim.api.nvim_create_namespace("TidalRipplePlayhead")
 
 vim.api.nvim_set_hl(0, "TidalRipplePlayhead", { link = "CursorLine" })
+vim.api.nvim_set_hl(0, "TidalRippleFlash", { link = "Search" })
 
 function M.setup(options)
   M.options = vim.tbl_deep_extend("force", {}, defaults, options or {})

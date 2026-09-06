@@ -6,28 +6,27 @@
 - [x] Fix config/doc drift
 - [x] Document undocumented features (sample browser, autocomplete)
 - [x] Commit and push config/doc changes
+- [x] **Playhead OSC integration** — `on_cycle()` now flashes markers driven by `/dirt/play` timing (`parsed.delta`), with `TidalRippleFlash` highlight
+- [x] **Silent-send warning** — `message.lua` warns once when sending to a REPL that isn't running (suppressed while launching)
+- [x] **sclang boot handshake** — REPL base queues sends until the interpreter prints output (20s timeout fallback)
+- [x] **Dead state removed** — `state.looper_loaded` was written but never read
 
 ## Functional Gaps
 
-- [ ] **Playhead OSC integration** — `lua/tidal/core/playhead.lua` `on_cycle()` is empty. `▶` markers placed on send, not cycle-driven. (Iteration 2 claim)
-- [ ] **Silent-send warning** — sends vanish silently when `auto_launch = false` and no REPL running. No user feedback.
-- [ ] **sclang boot handshake race** — no readiness check; can fail on slow machines.
+None — all three audited gaps are fixed.
 
 ## Data Gaps
 
 - [ ] **Sample bank file listings** — ~180 banks described but only ~18 have file data. Re-run `scripts/update_sample_data.lua` (requires `curl` + `jq`).
 
-## Cleanup
+## Cleanup (nice-to-have)
 
-- [ ] **Dead state** — `state.looper_loaded` is written in `boot.lua` but never read.
-- [ ] **`iterations.md` stale** — many Iteration-1 items marked `[ ]` are actually implemented.
-- [ ] **Blockwise visual selection** — explicit non-feature (`util/select.lua` raises error).
+- [ ] **`README` install path** — plugin named `tidal-ripple.nvim`, local dir matches; GitHub remote is `ripple-tidal.nvim`. Consider renaming repo or README for consistency.
+- [ ] **Blockwise visual selection** — explicit non-feature (`util/select.lua` raises error). Implement `<C-v>` block sends if desired.
 - [ ] **OSC dispatch logging** — logs every `/dirt/play` at DEBUG level (noisy).
 - [ ] **Redundant ftdetect** — both `ftdetect/tidal.lua` and `init.lua` set `filetype=haskell`.
+- [ ] **Config default** — `min_taps` now aligned (config + README = 2).
 
 ## Notes
 
-- README install path says `mattvioli/ripple-tidal.nvim` but plugin is `tidal-ripple.nvim`
-- `min_taps`: code defaults to `2`, README documents `4`
-- Completion feature exists but is undocumented in README
-- Sample browser (`:TidalSampleBrowser`, `<leader>a`, `<leader>i`) undocumented
+- `BootTidal.hs` top-level `let` triggers a false-positive LSP parse error; it is valid GHCi script syntax.

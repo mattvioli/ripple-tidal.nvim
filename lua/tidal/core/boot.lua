@@ -74,7 +74,6 @@ s.waitForBoot {
         looper.debug_mode and "true" or "false",
         looper_file:gsub("\\", "\\\\"):gsub('"', '\\"')
       ))
-      state.looper_loaded = true
     else
       notify.warn("Looper enabled but Looper.scd not found; falling back to normal boot")
       local file = vim.fn.expand(opts.file)

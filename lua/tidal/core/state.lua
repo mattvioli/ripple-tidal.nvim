@@ -18,7 +18,6 @@ local state = {
   playhead = nil,
   visualizer_open = false,
   sample_browser_open = false,
-  looper_loaded = false,
 }
 
 return state

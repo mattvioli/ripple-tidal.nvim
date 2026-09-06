@@ -19,6 +19,8 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 - OSC-based cycle visualization (toggle with `:TidalOSCToggle`)
 - Floating window beat grid visualizer (toggle with `:TidalVisualizerToggle` or `<leader>v`)
 - Tap tempo (toggle with `:TidalTapTempo` or `<leader>t`)
+- Sample bank browser — browsable Dirt-Samples banks with descriptions and file listings (`:TidalSampleBrowser` or `<leader>a`)
+- Context-aware autocomplete — Tidal pattern functions, control params, sample banks/indices, keywords, and user symbols
 - **TidalLooper integration** — live sampling via SuperDirt (default off, enable with `boot.looper.enabled = true`)
 - Bundled `Looper.scd` boot file for TidalLooper
 - All visualization features are opt-in — enable them via the toggle commands or keymaps
@@ -97,6 +99,8 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     looper_free_all   = { mode = "n", key = "<leader>lF" },
     looper_mode_cycle = { mode = "n", key = "<leader>lm" },
     looper_persist    = { mode = "n", key = "<leader>lp" },
+    toggle_sample_browser = { mode = "n", key = "<leader>a" },
+    investigate_sample    = { mode = "n", key = "<leader>i" },
   },
   selection_highlight = {
     highlight = { link = "IncSearch" },
@@ -131,11 +135,31 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
     max_orbits = 8,
     max_events_per_orbit = 4,
   },
+  sample_browser = {
+    width_ratio = 0.33,
+    border = "single",
+  },
   auto_launch = true,
+  completion = {
+    enabled = true,
+    backend = "cmp",       -- "cmp" (nvim-cmp) or "omnifunc"
+    source_name = "tidal",
+  },
   taptempo = {
-    min_taps = 4,
+    min_taps = 2,
     max_taps = 16,
     outlier_threshold = 0.3,
+    exit_factor = 3.0,
+    idle_ms = 1000,
+    popup = {
+      width = 22,
+      height = 16,
+      border = "single",
+      flash_ms = 150,
+      refresh_ms = 50,
+      anim_width = 12,
+      anim_height = 3,
+    },
   },
 }
 ```
@@ -153,13 +177,47 @@ Fork of [grddavies/tidal.nvim](https://github.com/grddavies/tidal.nvim) with enh
 | `:TidalVisualizerToggle`              | Toggle beat grid visualizer floating window              |
 | `:TidalTapTempo`                      | Toggle tap tempo mode (press `<CR>` in rhythm)           |
 | `:TidalTapTempoReset`                 | Reset tap tempo history                                  |
+| `:TidalSampleBrowser`                 | Toggle sample bank browser                               |
+| `:TidalSampleInvestigate`             | Investigate sample bank under cursor                     |
 | `:TidalLooperRecord`                  | Record loop on current orbit (count = orbit, default d1) |
 | `:TidalLooperOverdub`                 | Overdub loop on current orbit                            |
 | `:TidalLooperFree {n}`                | Free loop buffer n                                       |
 | `:TidalLooperFreeAll`                 | Free all loop buffers                                    |
 | `:TidalLooperPersist {name}`          | Persist loops to disk                                    |
-| `:TidalLooperMode {replace\|overdub}` | Set looper mode                                          |
-| `:TidalLooperInput {port}`            | Set looper input port                                    |
+| `:TidalLooperMode {replace\|overdub}` | Set looper mode                          |
+| `:TidalLooperInput {port}`            | Set looper input port                    |
+
+## Sample browser
+
+Browse the Dirt-Samples banks shipped with SuperDirt. Open with `:TidalSampleBrowser` or `<leader>a`. Each bank shows its description and file count; press `<CR>` or `<leader>i` to drill into the file listing, `<BS>` to go back, `q`/`<Esc>` to close.
+
+Overriding descriptions: create `~/.config/nvim/tidal-ripple/sample_descriptions.lua` returning a table of `bank_name = "description"` pairs. This overrides the descriptions bundled in `lua/tidal/data/sample_banks.lua`.
+
+| Key          | Action                                              |
+| ------------ | --------------------------------------------------- |
+| `<leader>a`  | Toggle sample bank browser                          |
+| `<leader>i`  | Investigate sample bank under cursor / drill into    |
+| `<CR>`       | Drill into the selected bank's file listing         |
+| `<BS>`       | Go back one level                                   |
+| `q` / `<Esc>`| Close the browser                                   |
+
+## Autocomplete
+
+Context-aware autocomplete for Tidal patterns, enabled by default. Two backends:
+
+- **nvim-cmp** (default) — registers a `tidal` source (name configurable via `completion.source_name`). No source config needed if you use `lazy.nvim`; if you configure sources manually, add `{ name = "tidal" }`.
+- **omnifunc** fallback — used when nvim-cmp isn't available, or when `completion.backend = "omnifunc"`. Sets `omnifunc` on `.tidal` buffers and triggers automatically on `<C-x><C-o>` / a debounced popup while typing.
+
+What it completes, based on cursor context:
+
+- Sample bank names inside `s"..."` (e.g. `s"<here>` → `bd`, `cp`, `808`, ...)
+- Sample indices / letters inside `n"..."`
+- Control parameters after `#` (e.g. `# <here>` → `cps`, `pan`, `vowel`, ...)
+- Pattern functions after `$` (e.g. `d1 $ <here>` → `slow`, `rev`, `every`, ...)
+- Tidal keywords, orbit aliases (`d0`–`d9`, `p`), oscillators
+- Your own symbols: `let x = ...`, `p "name"`, and bare assignments scanned from the buffer
+
+Best results with nvim-treesitter's haskell parser installed; without it the plugin falls back to a regex-based parser (a one-time notice is shown).
 
 ## Boot file
 

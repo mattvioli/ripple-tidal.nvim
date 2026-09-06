@@ -5,15 +5,15 @@
 **Goal**: Reliable inline eval with terminal management, matching vim-tidal's feature set.
 
 - [x] Fork `grddavies/tidal.nvim` as base, rename to `tidal-ripple.nvim`
-- [ ] `:TidalToggle` — hide/show GHCi terminal window (buffer stays, process stays alive)
-- [ ] `:TidalHush` — send `hush` to Tidal
-- [ ] `:TidalSilence {n}` — send `d{n} silence` to Tidal
-- [ ] Auto-launch GHCi + sclang on first send (if not already launched)
-- [ ] sclang boot enabled by default (opt-out via `boot.sclang.enabled = false`)
-- [ ] `show_meter` / `show_scope` / `show_tree` keymaps + commands (from cycles.nvim)
-- [ ] Boot file: bundled `bootfiles/BootTidal.hs` as default, user override via `boot.tidal.file`
-- [ ] Haskell syntax highlighting for `.tidal` files (set `filetype=haskell`)
-- [ ] Flash-on-send highlight (150ms, already in base)
+- [x] `:TidalToggle` — hide/show GHCi terminal window (buffer stays, process stays alive)
+- [x] `:TidalHush` — send `hush` to Tidal
+- [x] `:TidalSilence {n}` — send `d{n} silence` to Tidal
+- [x] Auto-launch GHCi + sclang on first send (if not already launched)
+- [x] sclang boot enabled by default (opt-out via `boot.sclang.enabled = false`)
+- [x] `show_meter` / `show_scope` / `show_tree` keymaps + commands (from cycles.nvim)
+- [x] Boot file: bundled `bootfiles/BootTidal.hs` as default, user override via `boot.tidal.file`
+- [x] Haskell syntax highlighting for `.tidal` files (set `filetype=haskell`)
+- [x] Flash-on-send highlight (150ms, already in base)
 
 **Keymaps** (same as tidal.nvim):
 | Mode | Key | Action |
